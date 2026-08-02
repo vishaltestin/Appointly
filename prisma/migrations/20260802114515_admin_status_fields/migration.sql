@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE `organizations` ADD COLUMN `status` ENUM('ACTIVE', 'SUSPENDED') NOT NULL DEFAULT 'ACTIVE';
+
+-- AlterTable
+ALTER TABLE `users` ADD COLUMN `status` ENUM('ACTIVE', 'SUSPENDED') NOT NULL DEFAULT 'ACTIVE';

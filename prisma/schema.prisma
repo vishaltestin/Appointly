@@ -1,0 +1,342 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum GlobalRole {
+  SUPER_ADMIN
+  USER
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum LocationType {
+  IN_PERSON
+  PHONE_CALL
+  ONLINE_MEETING
+  CUSTOM
+}
+
+enum BookingQuestionType {
+  TEXT
+  TEXTAREA
+  PHONE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum CancelledBy {
+  HOST
+  ATTENDEE
+}
+
+model User {
+  id            String     @id @default(cuid())
+  name          String?
+  email         String     @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  globalRole    GlobalRole @default(USER)
+  timezone      String     @default("UTC")
+
+  accounts    Account[]
+  sessions    Session[]
+  memberships Membership[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lastActiveOrgId String?
+  invitationsSent Invitation[]
+  status          UserStatus   @default(ACTIVE)
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Organization {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  logo     String?
+  timezone String  @default("UTC")
+
+  memberships Membership[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invitations Invitation[]
+  status      OrganizationStatus @default(ACTIVE)
+
+  eventTypes EventType[]
+  bookings   Booking[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  id             String  @id @default(cuid())
+  userId         String
+  organizationId String
+  role           OrgRole @default(MEMBER)
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime    @default(now())
+  schedules      Schedule[]
+  eventTypes     EventType[]
+  bookingsAsHost Booking[]
+
+  @@unique([userId, organizationId])
+  @@map("memberships")
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  email          String
+  role           OrgRole          @default(MEMBER)
+  token          String           @unique
+  status         InvitationStatus @default(PENDING)
+  organizationId String
+  invitedById    String
+  expiresAt      DateTime
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([email, organizationId, status])
+  @@index([organizationId])
+  @@map("invitations")
+}
+
+model Schedule {
+  id           String  @id @default(cuid())
+  membershipId String
+  name         String
+  timezone     String
+  isDefault    Boolean @default(false)
+  bufferBefore Int     @default(0) // minutes
+  bufferAfter  Int     @default(0) // minutes
+
+  membership    Membership     @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  workingHours  WorkingHours[]
+  dateOverrides DateOverride[]
+
+  eventTypes EventType[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([membershipId])
+  @@map("schedules")
+}
+
+model WorkingHours {
+  id         String @id @default(cuid())
+  scheduleId String
+  dayOfWeek  Int // 0 = Sunday ... 6 = Saturday
+  startTime  String // "09:00", 24hr, interpreted in the schedule's timezone
+  endTime    String // "17:00"
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId])
+  @@map("working_hours")
+}
+
+enum DateOverrideType {
+  UNAVAILABLE
+  CUSTOM_HOURS
+}
+
+model DateOverride {
+  id         String           @id @default(cuid())
+  scheduleId String
+  date       DateTime         @db.Date
+  type       DateOverrideType
+  startTime  String?
+  endTime    String?
+  reason     String?
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, date])
+  @@index([scheduleId])
+  @@map("date_overrides")
+}
+
+model EventType {
+  id             String @id @default(cuid())
+  membershipId   String
+  organizationId String
+
+  title           String
+  slug            String
+  description     String? @db.Text
+  durationMinutes Int     @default(30)
+  color           String  @default("#6366f1")
+
+  locationType  LocationType @default(ONLINE_MEETING)
+  locationValue String?
+
+  scheduleId String?
+
+  bufferBeforeMinutes   Int?
+  bufferAfterMinutes    Int?
+  minimumNoticeMinutes  Int  @default(120)
+  slotIntervalMinutes   Int?
+  maximumBookingsPerDay Int?
+
+  isActive Boolean @default(true)
+
+  membership   Membership   @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schedule     Schedule?    @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  questions            BookingQuestion[]
+  bookings             Booking[]
+  requiresConfirmation Boolean           @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, slug])
+  @@index([membershipId])
+  @@map("event_types")
+}
+
+model BookingQuestion {
+  id          String              @id @default(cuid())
+  eventTypeId String
+  label       String
+  type        BookingQuestionType @default(TEXT)
+  required    Boolean             @default(false)
+  order       Int                 @default(0)
+
+  eventType EventType @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+
+  @@index([eventTypeId])
+  @@map("booking_questions")
+}
+
+model Booking {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Nullable + snapshotted: deleting the event type or removing the host
+  // must never destroy booking history.
+  eventTypeId     String?
+  eventTitle      String
+  durationMinutes Int
+
+  hostMembershipId String?
+  hostName         String
+  hostEmail        String
+  hostTimezone     String
+
+  attendeeName     String
+  attendeeEmail    String
+  attendeeTimezone String
+  attendeeNotes    String? @db.Text
+  responses        Json?
+
+  startTime DateTime
+  endTime   DateTime
+  status    BookingStatus @default(CONFIRMED)
+
+  manageToken        String       @unique @default(cuid())
+  cancelledAt        DateTime?
+  cancelledBy        CancelledBy?
+  cancellationReason String?      @db.Text
+
+  rescheduledFromId String?  @unique
+  rescheduledFrom   Booking? @relation("BookingReschedule", fields: [rescheduledFromId], references: [id], onDelete: SetNull)
+  rescheduledTo     Booking? @relation("BookingReschedule")
+
+  reminderSentAt DateTime?
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  eventType      EventType?   @relation(fields: [eventTypeId], references: [id], onDelete: SetNull)
+  hostMembership Membership?  @relation(fields: [hostMembershipId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, startTime])
+  @@index([hostMembershipId, startTime])
+  @@index([attendeeEmail])
+  @@index([manageToken])
+  @@map("bookings")
+}
