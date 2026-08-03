@@ -14,6 +14,7 @@ import {
   createBookingSchema,
   type CreateBookingInput,
 } from "@/lib/validations/booking.schema"
+import { upsertCustomerOnBooking } from "@/lib/customer-upsert"
 
 export async function getPublicSlots(
   orgSlug: string,
@@ -129,6 +130,15 @@ export async function createPublicBooking(
         })
         if (conflict) throw new Error("SLOT_TAKEN")
 
+        const customerId = await upsertCustomerOnBooking({
+          organizationId: organization.id,
+          email: parsed.data.attendeeEmail,
+          name: parsed.data.attendeeName,
+          timezone: parsed.data.attendeeTimezone,
+          bookingStartTime: startTime,
+          bookingStatus: status,
+        })
+
         return tx.booking.create({
           data: {
             organizationId: organization.id,
@@ -148,6 +158,7 @@ export async function createPublicBooking(
             endTime,
             status,
             manageToken,
+            customerId,
           },
         })
       },

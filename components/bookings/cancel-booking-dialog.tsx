@@ -37,7 +37,9 @@ export function CancelBookingDialog({
   function handleCancel() {
     setError(null)
     startTransition(async () => {
-      const res = await cancelBookingAsHost(orgSlug, bookingId, { reason })
+      const res = await cancelBookingAsHost(orgSlug, bookingId, {
+        reason: reason || undefined,
+      })
       if (res?.error) {
         setError(res.error)
         return

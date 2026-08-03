@@ -9,6 +9,7 @@ import {
   cancelBookingSchema,
   type CancelBookingInput,
 } from "@/lib/validations/booking-management.schema"
+import { adjustCustomerCountersOnCancellation } from "@/lib/customer-upsert"
 
 type CancellableBooking = Pick<
   Booking,
@@ -20,8 +21,8 @@ type CancellableBooking = Pick<
   | "hostEmail"
   | "attendeeName"
   | "attendeeEmail"
+  | "customerId" 
 >
-
 export async function cancelBookingAsHost(
   orgSlug: string,
   bookingId: string,
@@ -78,6 +79,13 @@ async function performCancellation(
       cancellationReason: parsed.data.reason || null,
     },
   })
+
+  if (booking.customerId) {
+    await adjustCustomerCountersOnCancellation(
+      booking.customerId,
+      booking.status === "CONFIRMED"
+    )
+  }
 
   const notifyEmail =
     cancelledBy === "HOST" ? booking.attendeeEmail : booking.hostEmail

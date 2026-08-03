@@ -66,7 +66,7 @@ export function DashboardSidebar({
       href: `/app/${currentSlug}/customers`,
       match: `/app/${currentSlug}/customers`,
       icon: Users,
-      soon: true,
+      soon: false,
     },
     {
       label: "Settings",

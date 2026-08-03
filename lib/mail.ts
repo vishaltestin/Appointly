@@ -132,10 +132,10 @@ export async function sendHostApprovalRequiredEmail({
     ─────────────────────────────────────────
   `)
 }
-
 interface SendBookingDeclinedEmailParams {
   to: string
   eventTitle: string
+  hostName: string
   startTime: Date
   reason?: string
 }
@@ -143,6 +143,7 @@ interface SendBookingDeclinedEmailParams {
 export async function sendBookingDeclinedEmail({
   to,
   eventTitle,
+  hostName,
   startTime,
   reason,
 }: SendBookingDeclinedEmailParams) {
@@ -150,7 +151,7 @@ export async function sendBookingDeclinedEmail({
     ─────────────────────────────────────────
     📧  Booking Declined Email (stub)
     To:      ${to}
-    Subject: Your request for ${eventTitle} was declined
+    Subject: Your request for ${eventTitle} with ${hostName} was declined
     When:    ${startTime.toISOString()}
     Reason:  ${reason ?? "—"}
     ─────────────────────────────────────────
@@ -160,6 +161,7 @@ export async function sendBookingDeclinedEmail({
 interface SendBookingRescheduledEmailParams {
   to: string
   eventTitle: string
+  counterpartName: string
   oldStartTime: Date
   newStartTime: Date
   manageUrl: string
@@ -168,25 +170,26 @@ interface SendBookingRescheduledEmailParams {
 export async function sendBookingRescheduledEmail({
   to,
   eventTitle,
+  counterpartName,
   oldStartTime,
   newStartTime,
   manageUrl,
 }: SendBookingRescheduledEmailParams) {
   console.log(`
-    ─────────────────────────────────────────
-    📧  Booking Rescheduled Email (stub)
-    To:       ${to}
-    Subject:  Rescheduled: ${eventTitle}
-    Was:      ${oldStartTime.toISOString()}
-    Now:      ${newStartTime.toISOString()}
-    Manage:   ${manageUrl}
-    ─────────────────────────────────────────
-  `)
+─────────────────────────────────────────
+📅 Booking Rescheduled Email (stub)
+To: ${to}
+Subject: Rescheduled: ${eventTitle} with ${counterpartName}
+Old time: ${oldStartTime.toISOString()}
+New time: ${newStartTime.toISOString()}
+Manage: ${manageUrl}
+─────────────────────────────────────────
+`)
 }
-
 interface SendBookingReminderParams {
   to: string
   eventTitle: string
+  counterpartName: string
   startTime: Date
   manageUrl: string
 }
@@ -194,14 +197,41 @@ interface SendBookingReminderParams {
 export async function sendBookingReminderEmail({
   to,
   eventTitle,
+  counterpartName,
   startTime,
   manageUrl,
 }: SendBookingReminderParams) {
   console.log(`
+─────────────────────────────────────────
+⏰ Booking Reminder Email (stub)
+To: ${to}
+Subject: Reminder: ${eventTitle} with ${counterpartName}
+When: ${startTime.toISOString()}
+Manage: ${manageUrl}
+─────────────────────────────────────────
+`)
+}
+
+interface SendBookingApprovedEmailParams {
+  to: string
+  eventTitle: string
+  hostName: string
+  startTime: Date
+  manageUrl: string
+}
+
+export async function sendBookingApprovedEmail({
+  to,
+  eventTitle,
+  hostName,
+  startTime,
+  manageUrl,
+}: SendBookingApprovedEmailParams) {
+  console.log(`
     ─────────────────────────────────────────
-    📧  Booking Reminder Email (stub)
+    📧  Booking Approved Email (stub)
     To:      ${to}
-    Subject: Reminder: ${eventTitle} is coming up
+    Subject: Confirmed: ${eventTitle} with ${hostName}
     When:    ${startTime.toISOString()}
     Manage:  ${manageUrl}
     ─────────────────────────────────────────

@@ -238,6 +238,7 @@ async function performReschedule(
             status: "CONFIRMED",
             manageToken: newManageToken,
             rescheduledFromId: booking.id,
+            customerId: booking.customerId,
           },
         })
 
@@ -258,9 +259,13 @@ async function performReschedule(
 
     const notifyEmail =
       initiatedBy === "HOST" ? booking.attendeeEmail : booking.hostEmail
+    const counterpartName =
+      initiatedBy === "HOST" ? booking.attendeeName : booking.hostName
+
     await sendBookingRescheduledEmail({
       to: notifyEmail,
       eventTitle: booking.eventTitle,
+      counterpartName,
       oldStartTime: booking.startTime,
       newStartTime,
       manageUrl: `${process.env.NEXT_PUBLIC_APP_URL}/manage/${newManageToken}`,

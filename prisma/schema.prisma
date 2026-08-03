@@ -139,6 +139,7 @@ model Organization {
 
   eventTypes EventType[]
   bookings   Booking[]
+  customers  Customer[]
 
   @@map("organizations")
 }
@@ -330,13 +331,44 @@ model Booking {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   eventType      EventType?   @relation(fields: [eventTypeId], references: [id], onDelete: SetNull)
   hostMembership Membership?  @relation(fields: [hostMembershipId], references: [id], onDelete: SetNull)
+  customerId     String?
+  customer       Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([customerId])
   @@index([organizationId, startTime])
   @@index([hostMembershipId, startTime])
   @@index([attendeeEmail])
   @@index([manageToken])
   @@map("bookings")
+}
+
+model Customer {
+  id             String  @id @default(cuid())
+  organizationId String
+  email          String
+  name           String
+  timezone       String?
+  notes          String? @db.Text
+
+  // Denormalized aggregates — kept in sync by server actions on
+  // booking create/cancel. Avoids COUNT queries on every list render.
+  totalBookings     Int       @default(0)
+  completedBookings Int       @default(0)
+  cancelledBookings Int       @default(0)
+  firstBookingAt    DateTime?
+  lastBookingAt     DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookings     Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([organizationId, name])
+  @@map("customers")
 }

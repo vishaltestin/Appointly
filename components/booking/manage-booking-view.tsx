@@ -24,12 +24,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { cancelBookingAsAttendee } from "@/actions/booking-management.actions"
-import {
-  getAttendeeRescheduleSlots,
-  rescheduleBookingAsAttendee,
-} from "@/actions/reschedule.actions"
 import { RescheduleFlow } from "@/components/booking/reschedule-flow"
+import {
+  cancelBookingAsAttendee,
+  getRescheduleSlots,
+  rescheduleBookingAsAttendee,
+} from "@/actions/booking-management.actions"
 
 interface Props {
   booking: {
@@ -59,14 +59,16 @@ export function ManageBookingView({
   const [isPending, startTransition] = useTransition()
 
   const isPast = booking.startTime < new Date()
-  const wasRescheduled = status === "CANCELLED" && !!rescheduledToManageToken
   const canCancel = (status === "CONFIRMED" || status === "PENDING") && !isPast
   const canReschedule = status === "CONFIRMED" && !isPast
+  const wasRescheduled = !!rescheduledToManageToken
 
   function handleCancel() {
     setError(null)
     startTransition(async () => {
-      const res = await cancelBookingAsAttendee(booking.manageToken, { reason })
+      const res = await cancelBookingAsAttendee(booking.manageToken, {
+        reason: reason || undefined,
+      })
       if (res?.error) {
         setError(res.error)
         return
@@ -140,17 +142,16 @@ export function ManageBookingView({
         <div className="mt-6">
           <RescheduleFlow
             queryKeyPrefix={`attendee-reschedule-${booking.manageToken}`}
-            fetchSlots={(s, e) =>
-              getAttendeeRescheduleSlots(booking.manageToken, s, e)
-            }
+            fetchSlots={(s, e) => getRescheduleSlots(booking.manageToken, s, e)}
             onConfirm={async (newStartTimeISO) => {
               const res = await rescheduleBookingAsAttendee(
                 booking.manageToken,
                 newStartTimeISO
               )
-              if (res?.error) return { error: res.error }
-              if (res?.newManageToken)
-                router.push(`/manage/${res.newManageToken}`)
+              // ── Type narrowing: check for error first ──
+              if (res.error) return { error: res.error }
+              // Now TypeScript knows res has newManageToken
+              router.push(`/manage/${res.newManageToken}`)
               return {}
             }}
             onCancel={() => setMode("view")}

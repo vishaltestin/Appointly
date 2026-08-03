@@ -2,19 +2,21 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { RescheduleFlow } from "@/components/booking/reschedule-flow"
 import {
   getHostRescheduleSlots,
   rescheduleBookingAsHost,
-} from "@/actions/reschedule.actions"
+} from "@/actions/booking-management.actions"
 
 export function RescheduleBookingDialog({
   orgSlug,
@@ -24,6 +26,7 @@ export function RescheduleBookingDialog({
   bookingId: string
 }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
 
   return (
@@ -32,6 +35,9 @@ export function RescheduleBookingDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Reschedule booking</DialogTitle>
+          <DialogDescription>
+            Pick a new date and time. The attendee will be notified.
+          </DialogDescription>
         </DialogHeader>
         <RescheduleFlow
           queryKeyPrefix={`host-reschedule-${bookingId}`}
@@ -44,10 +50,11 @@ export function RescheduleBookingDialog({
               bookingId,
               newStartTimeISO
             )
-            if (res?.error) return { error: res.error }
+            if (res.error) return { error: res.error }
             setOpen(false)
-            if (res?.newBookingId)
-              router.push(`/app/${orgSlug}/bookings/${res.newBookingId}`)
+            queryClient.invalidateQueries({
+              queryKey: ["bookings"],
+            })
             router.refresh()
             return {}
           }}

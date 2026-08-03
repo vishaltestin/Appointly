@@ -1,8 +1,16 @@
-import Link from "next/link"
-import { CalendarClock, Link as LinkIcon, Users } from "lucide-react"
-import { db } from "@/lib/db"
 import { requireOrgMembership } from "@/lib/session"
-import { CopyLinkButton } from "@/components/event-types/copy-link-button"
+import {
+  getDashboardStats,
+  getBookingVolume,
+  getPopularEventTypes,
+  getBusiestTimes,
+  getUpcomingBookings,
+} from "@/actions/dashboard.actions"
+import { StatsCards } from "@/components/dashboard/stats-cards"
+import { BookingVolumeChart } from "@/components/dashboard/booking-volume-chart"
+import { PopularEventTypes } from "@/components/dashboard/popular-event-types"
+import { BusiestTimes } from "@/components/dashboard/busiest-times"
+import { UpcomingBookingsList } from "@/components/dashboard/upcoming-bookings-list"
 
 export default async function DashboardPage({
   params,
@@ -12,66 +20,37 @@ export default async function DashboardPage({
   const { orgSlug } = await params
   const membership = await requireOrgMembership(orgSlug)
 
-  const [upcomingCount, eventTypeCount] = await Promise.all([
-    db.booking.count({
-      where: {
-        hostMembershipId: membership.id,
-        status: "CONFIRMED",
-        startTime: { gte: new Date() },
-      },
-    }),
-    db.eventType.count({ where: { membershipId: membership.id } }),
-  ])
-
-  const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL}/book/${orgSlug}`
+  // Fetch all data in parallel
+  const [stats, volume, popularTypes, busiestTimes, upcoming] =
+    await Promise.all([
+      getDashboardStats(orgSlug),
+      getBookingVolume(orgSlug),
+      getPopularEventTypes(orgSlug),
+      getBusiestTimes(orgSlug),
+      getUpcomingBookings(orgSlug),
+    ])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">
-          Welcome, {membership.user.name} 👋
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Welcome back, {membership.user.name}
         </h1>
-        <p className="text-muted-foreground">
-          Here&apos;s what&apos;s happening in {membership.organization.name}.
+        <p className="text-sm text-muted-foreground">
+          Here&apos;s what&apos;s happening with your bookings.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Link
-          href={`/app/${orgSlug}/bookings`}
-          className="rounded-xl border bg-card p-5 transition-colors hover:border-primary"
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-muted-foreground">
-              Upcoming bookings
-            </p>
-            <CalendarClock className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <p className="mt-2 text-2xl font-semibold">{upcomingCount}</p>
-        </Link>
-        <Link
-          href={`/app/${orgSlug}/event-types`}
-          className="rounded-xl border bg-card p-5 transition-colors hover:border-primary"
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-muted-foreground">
-              Event types
-            </p>
-            <LinkIcon className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <p className="mt-2 text-2xl font-semibold">{eventTypeCount}</p>
-        </Link>
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-muted-foreground">
-              Your booking page
-            </p>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div className="mt-2">
-            <CopyLinkButton url={publicUrl} />
-          </div>
-        </div>
+      <StatsCards stats={stats} />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <BookingVolumeChart data={volume} />
+        <PopularEventTypes eventTypes={popularTypes} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <BusiestTimes data={busiestTimes} />
+        <UpcomingBookingsList orgSlug={orgSlug} bookings={upcoming} />
       </div>
     </div>
   )
