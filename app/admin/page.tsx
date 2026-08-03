@@ -1,6 +1,12 @@
 import Link from "next/link"
 import { formatDistanceToNow, subDays } from "date-fns"
-import { Building2, Users, UserPlus, CalendarClock } from "lucide-react"
+import {
+  Building2,
+  Users,
+  UserPlus,
+  CalendarClock,
+  CreditCard,
+} from "lucide-react"
 import { db } from "@/lib/db"
 import { StatCard } from "@/components/admin/stat-card"
 import { StatusBadge } from "@/components/shared/status-badge"
@@ -9,18 +15,32 @@ export default async function AdminOverviewPage() {
   const now = new Date()
   const sevenDaysAgo = subDays(now, 7)
 
-  const [totalOrgs, totalUsers, newUsers, recentOrgs, recentUsers] =
-    await Promise.all([
-      db.organization.count(),
-      db.user.count(),
-      db.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
-      db.organization.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        include: { _count: { select: { memberships: true } } },
-      }),
-      db.user.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
-    ])
+  const [
+    totalOrgs,
+    totalUsers,
+    newUsers,
+    totalBookings,
+    planCounts,
+    recentOrgs,
+    recentUsers,
+  ] = await Promise.all([
+    db.organization.count(),
+    db.user.count(),
+    db.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+    db.booking.count(),
+    db.organization.groupBy({ by: ["plan"], _count: { id: true } }),
+    db.organization.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { _count: { select: { memberships: true } } },
+    }),
+    db.user.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+  ])
+
+  const countByPlan = Object.fromEntries(
+    planCounts.map((row) => [row.plan, row._count.id])
+  ) as Record<string, number>
+  const paidOrgs = (countByPlan.PRO ?? 0) + (countByPlan.BUSINESS ?? 0)
 
   return (
     <div className="space-y-8">
@@ -33,16 +53,20 @@ export default async function AdminOverviewPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Total workspaces" value={totalOrgs} icon={Building2} />
         <StatCard label="Total users" value={totalUsers} icon={Users} />
         <StatCard label="New users (7d)" value={newUsers} icon={UserPlus} />
         <StatCard
           label="Total bookings"
-          value={0}
+          value={totalBookings}
           icon={CalendarClock}
-          comingSoon
-          hint="Arrives with the booking module"
+        />
+        <StatCard
+          label="Paid workspaces"
+          value={paidOrgs}
+          icon={CreditCard}
+          hint={`${countByPlan.PRO ?? 0} Pro · ${countByPlan.BUSINESS ?? 0} Business`}
         />
       </div>
 

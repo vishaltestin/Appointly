@@ -10,6 +10,11 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
+import {
+  CHART_COLORS,
+  chartTooltipStyle,
+  primaryWithOpacity,
+} from "@/lib/chart-theme"
 
 interface BusiestTimesData {
   byDayOfWeek: { day: string; count: number }[]
@@ -58,8 +63,8 @@ export function BusiestTimes({ data }: { data: BusiestTimesData }) {
                         height: `${Math.max(intensity * 60, 4)}px`,
                         backgroundColor:
                           intensity > 0
-                            ? `hsl(var(--primary) / ${Math.max(intensity, 0.15)})`
-                            : "hsl(var(--muted))",
+                            ? primaryWithOpacity(Math.max(intensity, 0.15))
+                            : CHART_COLORS.muted,
                       }}
                       title={`${d.day}: ${d.count} bookings`}
                     />
@@ -90,37 +95,38 @@ export function BusiestTimes({ data }: { data: BusiestTimesData }) {
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      className="stroke-muted"
+                      stroke={CHART_COLORS.border}
                     />
                     <XAxis
                       dataKey="hour"
-                      tick={{ fontSize: 10 }}
+                      tick={{
+                        fontSize: 10,
+                        fill: CHART_COLORS.mutedForeground,
+                      }}
                       tickLine={false}
                       axisLine={false}
                       interval="preserveStartEnd"
                     />
                     <YAxis
-                      tick={{ fontSize: 10 }}
+                      tick={{
+                        fontSize: 10,
+                        fill: CHART_COLORS.mutedForeground,
+                      }}
                       tickLine={false}
                       axisLine={false}
                       allowDecimals={false}
                       width={25}
                     />
                     <Tooltip
-                      contentStyle={{
-                        borderRadius: "8px",
-                        border: "1px solid hsl(var(--border))",
-                        backgroundColor: "hsl(var(--popover))",
-                        color: "hsl(var(--popover-foreground))",
-                        fontSize: "12px",
-                      }}
-                      formatter={(value: number) => [
-                        `${value} booking${value !== 1 ? "s" : ""}`,
+                      cursor={{ fill: CHART_COLORS.muted, opacity: 0.4 }}
+                      contentStyle={{ ...chartTooltipStyle, fontSize: "12px" }}
+                      formatter={(value) => [
+                        `${Number(value)} booking${Number(value) !== 1 ? "s" : ""}`,
                       ]}
                     />
                     <Bar
                       dataKey="count"
-                      fill="hsl(var(--primary))"
+                      fill={CHART_COLORS.primary}
                       radius={[2, 2, 0, 0]}
                     />
                   </BarChart>

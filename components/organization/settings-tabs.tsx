@@ -9,6 +9,7 @@ export function SettingsTabs({ orgSlug }: { orgSlug: string }) {
   const tabs = [
     { label: "General", href: `/app/${orgSlug}/settings/general` },
     { label: "Members", href: `/app/${orgSlug}/settings/members` },
+    { label: "Plan & Usage", href: `/app/${orgSlug}/settings/plan` },
   ]
 
   return (

@@ -39,6 +39,7 @@ export async function GET(request: Request) {
       eventTitle: booking.eventTitle,
       startTime: booking.startTime,
       manageUrl: `${process.env.NEXT_PUBLIC_APP_URL}/manage/${booking.manageToken}`,
+      counterpartName: booking.hostName,
     })
     await db.booking.update({
       where: { id: booking.id },

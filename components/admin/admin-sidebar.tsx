@@ -25,7 +25,7 @@ const nav = [
     label: "Plans & Billing",
     href: "/admin/plans",
     icon: CreditCard,
-    soon: true,
+    soon: false,
   },
 ]
 

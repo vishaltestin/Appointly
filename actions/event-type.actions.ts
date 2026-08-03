@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { requireOrgMembership } from "@/lib/session"
 import { generateSlug } from "@/lib/utils"
 import { ensureDefaultScheduleForMembership } from "@/lib/schedule-bootstrap"
+import { canAddBookingQuestions, canCreateEventType } from "@/lib/usage"
 import {
   createEventTypeSchema,
   eventTypeDetailsSchema,
@@ -34,6 +35,11 @@ export async function createEventType(
   const membership = await requireOrgMembership(orgSlug)
   const parsed = createEventTypeSchema.safeParse(values)
   if (!parsed.success) return { error: "Invalid title." }
+
+  // Plan gate (Module 8). Enforced here rather than only in the UI — the
+  // dialog's disabled state is a courtesy, this is the boundary.
+  const limitCheck = await canCreateEventType(membership.organizationId)
+  if (!limitCheck.allowed) return { error: limitCheck.error! }
 
   // Guarantees this event type is bookable the moment it's created — see
   // Module 5 notes on why this can't be skipped.
@@ -148,6 +154,12 @@ export async function updateBookingQuestions(
 
   const parsed = updateBookingQuestionsSchema.safeParse(values)
   if (!parsed.success) return { error: "Invalid questions." }
+
+  const limitCheck = await canAddBookingQuestions(
+    eventType.organizationId,
+    parsed.data.questions.length
+  )
+  if (!limitCheck.allowed) return { error: limitCheck.error! }
 
   await db.$transaction([
     db.bookingQuestion.deleteMany({ where: { eventTypeId } }),

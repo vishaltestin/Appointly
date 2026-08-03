@@ -354,7 +354,6 @@ async function performReschedule(
           },
         })
         if (conflict) throw new Error("SLOT_TAKEN")
-          
 
         const created = await tx.booking.create({
           data: {

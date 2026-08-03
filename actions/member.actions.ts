@@ -6,6 +6,7 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { requireAuth, requireOrgMembership } from "@/lib/session"
 import { permissions } from "@/lib/permissions"
+import { canAddTeamMember } from "@/lib/usage"
 import { sendInvitationEmail } from "@/lib/mail"
 import {
   inviteMemberSchema,
@@ -40,6 +41,11 @@ export async function inviteMember(orgSlug: string, values: InviteMemberInput) {
   })
   if (existingInvite)
     return { error: "An invitation is already pending for this email." }
+
+  // Plan gate (Module 8). Checked after the duplicate guards so re-inviting
+  // an existing member reports the real problem instead of a seat error.
+  const limitCheck = await canAddTeamMember(membership.organizationId)
+  if (!limitCheck.allowed) return { error: limitCheck.error! }
 
   const token = crypto.randomBytes(32).toString("hex")
   const expiresAt = new Date(

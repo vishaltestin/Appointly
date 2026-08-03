@@ -68,6 +68,7 @@ export async function declineBooking(
     to: booking.attendeeEmail,
     eventTitle: booking.eventTitle,
     startTime: booking.startTime,
+    hostName: booking.hostName,
     reason,
   })
 

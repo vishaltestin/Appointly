@@ -9,6 +9,11 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
+import {
+  CHART_COLORS,
+  chartAxisTick,
+  chartTooltipStyle,
+} from "@/lib/chart-theme"
 
 interface DataPoint {
   date: string
@@ -32,37 +37,35 @@ export function BookingVolumeChart({ data }: { data: DataPoint[] }) {
               data={data}
               margin={{ top: 5, right: 5, bottom: 5, left: 0 }}
             >
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={CHART_COLORS.border}
+              />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 11 }}
+                tick={chartAxisTick}
                 tickLine={false}
                 axisLine={false}
                 interval="preserveStartEnd"
               />
               <YAxis
-                tick={{ fontSize: 11 }}
+                tick={chartAxisTick}
                 tickLine={false}
                 axisLine={false}
                 allowDecimals={false}
                 domain={[0, Math.max(maxCount, 1)]}
               />
               <Tooltip
-                contentStyle={{
-                  borderRadius: "8px",
-                  border: "1px solid hsl(var(--border))",
-                  backgroundColor: "hsl(var(--popover))",
-                  color: "hsl(var(--popover-foreground))",
-                  fontSize: "13px",
-                }}
-                formatter={(value: number) => [
-                  `${value} booking${value !== 1 ? "s" : ""}`,
+                cursor={{ fill: CHART_COLORS.muted, opacity: 0.4 }}
+                contentStyle={chartTooltipStyle}
+                formatter={(value) => [
+                  `${Number(value)} booking${Number(value) !== 1 ? "s" : ""}`,
                   "Bookings",
                 ]}
               />
               <Bar
                 dataKey="count"
-                fill="hsl(var(--primary))"
+                fill={CHART_COLORS.primary}
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
