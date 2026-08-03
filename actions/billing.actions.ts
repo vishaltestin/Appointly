@@ -2,52 +2,11 @@
 
 import { revalidatePath } from "next/cache"
 import { db } from "@/lib/db"
-import { requireOrgMembership, requireSuperAdmin } from "@/lib/session"
-import { permissions } from "@/lib/permissions"
-import { getOrganizationUsage } from "@/lib/usage"
+import { requireSuperAdmin } from "@/lib/session"
 import {
   changePlanSchema,
   type ChangePlanInput,
 } from "@/lib/validations/billing.schema"
-
-// ── Workspace-facing ────────────────────────────────────────────────────────
-
-/**
- * Usage meters for the Plan & Usage settings page. Readable by any member —
- * knowing you're 2 event types from the cap isn't privileged information,
- * and gating it behind OWNER would make the sidebar link dead for everyone
- * else. Only *changing* the plan is restricted.
- */
-export async function getWorkspaceUsage(orgSlug: string) {
-  const membership = await requireOrgMembership(orgSlug)
-  const usage = await getOrganizationUsage(membership.organizationId)
-
-  return {
-    usage,
-    canManageBilling: permissions.canManageBilling(membership.role),
-    planChangedAt: membership.organization.planChangedAt,
-    planNotes: membership.organization.planNotes,
-  }
-}
-
-/**
- * Plan history for the workspace's own audit trail. Owners only — the notes
- * field can contain internal admin remarks (invoice refs, comp reasons).
- */
-export async function getWorkspacePlanHistory(orgSlug: string) {
-  const membership = await requireOrgMembership(orgSlug)
-  if (!permissions.canManageBilling(membership.role)) {
-    return { error: "You don't have permission to view billing history." }
-  }
-
-  const logs = await db.planChangeLog.findMany({
-    where: { organizationId: membership.organizationId },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-  })
-
-  return { logs }
-}
 
 // ── Admin-facing ────────────────────────────────────────────────────────────
 

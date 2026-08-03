@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "app/**/{page,layout,route,not-found,error,loading}.{ts,tsx}",
+    "auth.ts",
+    "auth.config.ts",
+    "proxy.ts",
+    "prisma/seed.ts",
+    "scripts/*.ts"
+  ],
+  "project": ["**/*.{ts,tsx}"],
+  "ignore": [
+    "generated/**",
+    "components/ui/**"
+  ],
+  "ignoreDependencies": [
+    "tailwindcss",
+    "tw-animate-css",
+    "shadcn"
+  ],
+  "ignoreExportsUsedInFile": true
+}

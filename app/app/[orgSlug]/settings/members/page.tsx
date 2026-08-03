@@ -1,7 +1,9 @@
 import { db } from "@/lib/db"
 import { requireOrgMembership } from "@/lib/session"
 import { permissions } from "@/lib/permissions"
+import { canAddTeamMember } from "@/lib/usage"
 import { MemberList } from "@/components/team/member-list"
+import { UpgradeNotice } from "@/components/billing/upgrade-notice"
 import { PendingInvitations } from "@/components/team/pending-invitations"
 import { InviteMemberDialog } from "@/components/team/invite-member-dialog"
 
@@ -14,7 +16,7 @@ export default async function MembersSettingsPage({
   const membership = await requireOrgMembership(orgSlug)
   const canInvite = permissions.canInviteMembers(membership.role)
 
-  const [members, invitations] = await Promise.all([
+  const [members, invitations, seatCheck] = await Promise.all([
     db.membership.findMany({
       where: { organizationId: membership.organizationId },
       include: { user: true },
@@ -24,6 +26,7 @@ export default async function MembersSettingsPage({
       where: { organizationId: membership.organizationId, status: "PENDING" },
       orderBy: { createdAt: "desc" },
     }),
+    canAddTeamMember(membership.organizationId),
   ])
 
   const memberRows = members.map((m) => ({
@@ -45,8 +48,14 @@ export default async function MembersSettingsPage({
             workspace
           </p>
         </div>
-        {canInvite && <InviteMemberDialog orgSlug={orgSlug} />}
+        {canInvite && (
+          <InviteMemberDialog orgSlug={orgSlug} disabled={!seatCheck.allowed} />
+        )}
       </div>
+
+      {canInvite && !seatCheck.allowed && (
+        <UpgradeNotice orgSlug={orgSlug} message={seatCheck.error!} />
+      )}
 
       <MemberList
         orgSlug={orgSlug}

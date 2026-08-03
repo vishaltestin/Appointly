@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import { useState, useTransition } from "react"
+import { useBrowserTimezone } from "@/hooks/use-browser-timezone"
 import { format } from "date-fns"
 import { Loader2 } from "lucide-react"
 import { BookingCalendar } from "@/components/booking/booking-calendar"
@@ -29,15 +30,11 @@ export function RescheduleFlow({
   onConfirm,
   onCancel,
 }: Props) {
-  const [timezone, setTimezone] = useState("UTC")
+  const [timezone, setTimezone] = useBrowserTimezone()
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-
-  useEffect(() => {
-    setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
-  }, [])
 
   function handleConfirm() {
     if (!selectedSlot) return

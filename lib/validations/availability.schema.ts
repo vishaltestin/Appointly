@@ -24,7 +24,7 @@ const timeRangeSchema = z
     path: ["endTime"],
   })
 
-export const workingHoursDaySchema = z
+const workingHoursDaySchema = z
   .object({
     dayOfWeek: z.number().int().min(0).max(6),
     ranges: z.array(timeRangeSchema).max(5, "Too many time ranges for one day"),

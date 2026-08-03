@@ -27,9 +27,9 @@ import {
 import { RescheduleFlow } from "@/components/booking/reschedule-flow"
 import {
   cancelBookingAsAttendee,
-  getRescheduleSlots,
+  getAttendeeRescheduleSlots,
   rescheduleBookingAsAttendee,
-} from "@/actions/booking-management.actions"
+} from "@/actions/booking-lifecycle.actions"
 
 interface Props {
   booking: {
@@ -142,15 +142,15 @@ export function ManageBookingView({
         <div className="mt-6">
           <RescheduleFlow
             queryKeyPrefix={`attendee-reschedule-${booking.manageToken}`}
-            fetchSlots={(s, e) => getRescheduleSlots(booking.manageToken, s, e)}
+            fetchSlots={(s, e) =>
+              getAttendeeRescheduleSlots(booking.manageToken, s, e)
+            }
             onConfirm={async (newStartTimeISO) => {
               const res = await rescheduleBookingAsAttendee(
                 booking.manageToken,
                 newStartTimeISO
               )
-              // ── Type narrowing: check for error first ──
               if (res.error) return { error: res.error }
-              // Now TypeScript knows res has newManageToken
               router.push(`/manage/${res.newManageToken}`)
               return {}
             }}

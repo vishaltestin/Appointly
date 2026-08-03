@@ -13,7 +13,8 @@ import {
 import { cn } from "@/lib/utils"
 import { OrgSwitcher } from "@/components/organization/org-switcher"
 import { Badge } from "@/components/ui/badge"
-import type { OrgRole } from "@/generated/prisma/client"
+import { PlanBadge } from "@/components/shared/plan-badge"
+import type { OrgRole, SubscriptionPlan } from "@/generated/prisma/client"
 
 interface SidebarOrg {
   id: string
@@ -26,9 +27,11 @@ interface SidebarOrg {
 export function DashboardSidebar({
   organizations,
   currentSlug,
+  plan,
 }: {
   organizations: SidebarOrg[]
   currentSlug: string
+  plan: SubscriptionPlan
 }) {
   const pathname = usePathname()
 
@@ -79,8 +82,15 @@ export function DashboardSidebar({
 
   return (
     <aside className="flex w-64 flex-col border-r bg-background">
-      <div className="border-b p-4">
+      <div className="space-y-2 border-b p-4">
         <OrgSwitcher organizations={organizations} currentSlug={currentSlug} />
+        <Link
+          href={`/app/${currentSlug}/settings/plan`}
+          className="flex items-center gap-2 px-2 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <PlanBadge plan={plan} />
+          <span>plan</span>
+        </Link>
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {nav.map((item) => {

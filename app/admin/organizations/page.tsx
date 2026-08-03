@@ -34,6 +34,7 @@ export default async function AdminOrganizationsPage({
     name: org.name,
     slug: org.slug,
     status: org.status,
+    plan: org.plan,
     memberCount: org._count.memberships,
     createdAt: org.createdAt,
   }))

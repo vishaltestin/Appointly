@@ -6,7 +6,7 @@ const ROLE_WEIGHT: Record<OrgRole, number> = {
   MEMBER: 1,
 }
 
-export function hasMinimumRole(role: OrgRole, minimum: OrgRole) {
+function hasMinimumRole(role: OrgRole, minimum: OrgRole) {
   return ROLE_WEIGHT[role] >= ROLE_WEIGHT[minimum]
 }
 

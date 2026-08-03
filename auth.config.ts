@@ -23,7 +23,8 @@ export const authConfig = {
         if (!isLoggedIn) return false
         const role = (auth?.user as { globalRole?: string })?.globalRole
         if (role !== "SUPER_ADMIN") {
-          return Response.redirect(new URL("/dashboard", nextUrl))
+          // /app resolves the user's workspace and forwards to its dashboard.
+          return Response.redirect(new URL("/app", nextUrl))
         }
         return true
       }
@@ -31,7 +32,7 @@ export const authConfig = {
       if (isProtected) return isLoggedIn
 
       if (isAuthPage && isLoggedIn) {
-        return Response.redirect(new URL("/dashboard", nextUrl))
+        return Response.redirect(new URL("/app", nextUrl))
       }
 
       return true

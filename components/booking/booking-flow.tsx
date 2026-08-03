@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { useBrowserTimezone } from "@/hooks/use-browser-timezone"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import {
@@ -50,15 +51,11 @@ interface Props {
 
 export function BookingFlow({ orgSlug, eventType, host }: Props) {
   const router = useRouter()
-  const [timezone, setTimezone] = useState("UTC")
+  const [timezone, setTimezone] = useBrowserTimezone()
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
   const [step, setStep] = useState<"pick" | "details">("pick")
   const [slotRefreshKey, setSlotRefreshKey] = useState(0)
-
-  useEffect(() => {
-    setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
-  }, [])
 
   const LocationIcon = LOCATION_ICONS[eventType.locationType]
 

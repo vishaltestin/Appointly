@@ -50,7 +50,11 @@ export default async function OrgLayout({
       }}
     >
       <div className="flex min-h-screen">
-        <DashboardSidebar organizations={orgList} currentSlug={orgSlug} />
+        <DashboardSidebar
+          organizations={orgList}
+          currentSlug={orgSlug}
+          plan={membership.organization.plan}
+        />
         <div className="flex flex-1 flex-col">
           <DashboardHeader
             user={{

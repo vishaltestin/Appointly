@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { cancelBookingAsHost } from "@/actions/booking-management.actions"
+import { cancelBookingAsHost } from "@/actions/booking-lifecycle.actions"
 
 export function CancelBookingDialog({
   orgSlug,

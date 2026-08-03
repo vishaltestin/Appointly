@@ -27,7 +27,7 @@ export const eventTypeAvailabilitySchema = z.object({
   maximumBookingsPerDay: z.number().int().min(1).max(100).nullable(),
   requiresConfirmation: z.boolean(),
 })
-export const bookingQuestionSchema = z.object({
+const bookingQuestionSchema = z.object({
   id: z.string().optional(),
   label: z.string().min(1, "Label is required").max(150),
   type: z.enum(["TEXT", "TEXTAREA", "PHONE"]),

@@ -9,12 +9,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { StatusBadge } from "@/components/shared/status-badge"
+import { PlanBadge } from "@/components/shared/plan-badge"
+import type { SubscriptionPlan } from "@/generated/prisma/client"
 
 interface OrgRow {
   id: string
   name: string
   slug: string
   status: "ACTIVE" | "SUSPENDED"
+  plan: SubscriptionPlan
   memberCount: number
   createdAt: Date
 }
@@ -37,6 +40,7 @@ export function OrganizationsTable({
       <TableHeader>
         <TableRow>
           <TableHead>Workspace</TableHead>
+          <TableHead>Plan</TableHead>
           <TableHead>Members</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Created</TableHead>
@@ -53,6 +57,9 @@ export function OrganizationsTable({
                 {org.name}
               </Link>
               <p className="text-xs text-muted-foreground">/{org.slug}</p>
+            </TableCell>
+            <TableCell>
+              <PlanBadge plan={org.plan} />
             </TableCell>
             <TableCell>{org.memberCount}</TableCell>
             <TableCell>

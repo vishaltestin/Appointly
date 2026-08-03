@@ -69,7 +69,11 @@ export function ChangeRoleDialog({
         </DialogHeader>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
-        {success && <p className="text-sm text-emerald-600">{success}</p>}
+        {success && (
+          <p className="text-sm text-emerald-600 dark:text-emerald-400">
+            {success}
+          </p>
+        )}
 
         <Select
           value={role}

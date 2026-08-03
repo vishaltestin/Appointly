@@ -52,7 +52,7 @@ export default async function BookingConfirmationPage({
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
       <div className="w-full max-w-md rounded-xl border bg-card p-8 text-center shadow-sm">
-        <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
+        <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500 dark:text-emerald-400" />
         <h1 className="mt-4 text-xl font-semibold">Booking confirmed</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           A confirmation has been sent to {booking.attendeeEmail}.

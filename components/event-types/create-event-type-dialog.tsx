@@ -18,7 +18,13 @@ import {
 } from "@/components/ui/dialog"
 import { createEventType } from "@/actions/event-type.actions"
 
-export function CreateEventTypeDialog({ orgSlug }: { orgSlug: string }) {
+export function CreateEventTypeDialog({
+  orgSlug,
+  disabled = false,
+}: {
+  orgSlug: string
+  disabled?: boolean
+}) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState("")
@@ -48,7 +54,7 @@ export function CreateEventTypeDialog({ orgSlug }: { orgSlug: string }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button>
+          <Button disabled={disabled}>
             <Plus className="mr-2 h-4 w-4" />
             New event type
           </Button>

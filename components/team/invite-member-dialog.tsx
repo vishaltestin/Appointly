@@ -30,7 +30,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-export function InviteMemberDialog({ orgSlug }: { orgSlug: string }) {
+export function InviteMemberDialog({
+  orgSlug,
+  disabled = false,
+}: {
+  orgSlug: string
+  disabled?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +68,10 @@ export function InviteMemberDialog({ orgSlug }: { orgSlug: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90">
+      <DialogTrigger
+        disabled={disabled}
+        className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+      >
         <UserPlus className="mr-2 h-4 w-4" />
         Invite member
       </DialogTrigger>

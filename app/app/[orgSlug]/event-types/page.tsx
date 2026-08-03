@@ -1,7 +1,9 @@
 import { db } from "@/lib/db"
 import { requireOrgMembership } from "@/lib/session"
+import { canCreateEventType } from "@/lib/usage"
 import { CreateEventTypeDialog } from "@/components/event-types/create-event-type-dialog"
 import { EventTypeCard } from "@/components/event-types/event-type-card"
+import { UpgradeNotice } from "@/components/billing/upgrade-notice"
 
 export default async function EventTypesPage({
   params,
@@ -11,10 +13,13 @@ export default async function EventTypesPage({
   const { orgSlug } = await params
   const membership = await requireOrgMembership(orgSlug)
 
-  const eventTypes = await db.eventType.findMany({
-    where: { membershipId: membership.id },
-    orderBy: { createdAt: "asc" },
-  })
+  const [eventTypes, limitCheck] = await Promise.all([
+    db.eventType.findMany({
+      where: { membershipId: membership.id },
+      orderBy: { createdAt: "asc" },
+    }),
+    canCreateEventType(membership.organizationId),
+  ])
 
   return (
     <div className="space-y-6">
@@ -25,8 +30,15 @@ export default async function EventTypesPage({
             Create bookable links to share with your clients.
           </p>
         </div>
-        <CreateEventTypeDialog orgSlug={orgSlug} />
+        <CreateEventTypeDialog
+          orgSlug={orgSlug}
+          disabled={!limitCheck.allowed}
+        />
       </div>
+
+      {!limitCheck.allowed && (
+        <UpgradeNotice orgSlug={orgSlug} message={limitCheck.error!} />
+      )}
 
       {eventTypes.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
@@ -47,7 +59,7 @@ export default async function EventTypesPage({
                 durationMinutes: et.durationMinutes,
                 color: et.color,
                 isActive: et.isActive,
-                requiresConfirmation: et.requiresConfirmation
+                requiresConfirmation: et.requiresConfirmation,
               }}
             />
           ))}

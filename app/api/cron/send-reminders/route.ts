@@ -37,9 +37,10 @@ export async function GET(request: Request) {
     await sendBookingReminderEmail({
       to: booking.attendeeEmail,
       eventTitle: booking.eventTitle,
+      // Reminder is addressed to the attendee, so their counterpart is the host.
+      counterpartName: booking.hostName,
       startTime: booking.startTime,
       manageUrl: `${process.env.NEXT_PUBLIC_APP_URL}/manage/${booking.manageToken}`,
-      counterpartName: booking.hostName,
     })
     await db.booking.update({
       where: { id: booking.id },

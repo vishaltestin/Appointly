@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 
-export async function getCurrentUser() {
+async function getCurrentUser() {
   const session = await auth()
   return session?.user ?? null
 }

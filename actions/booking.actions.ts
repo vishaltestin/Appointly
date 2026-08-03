@@ -14,7 +14,7 @@ import {
   createBookingSchema,
   type CreateBookingInput,
 } from "@/lib/validations/booking.schema"
-import { upsertCustomerOnBooking } from "@/lib/customer-upsert"
+import { onBookingCreated } from "@/lib/customer-counters"
 
 export async function getPublicSlots(
   orgSlug: string,
@@ -130,7 +130,9 @@ export async function createPublicBooking(
         })
         if (conflict) throw new Error("SLOT_TAKEN")
 
-        const customerId = await upsertCustomerOnBooking({
+        // Must use `tx`, not the global `db` handle — otherwise the customer
+        // row commits even when the booking insert below rolls back.
+        const customerId = await onBookingCreated(tx, {
           organizationId: organization.id,
           email: parsed.data.attendeeEmail,
           name: parsed.data.attendeeName,

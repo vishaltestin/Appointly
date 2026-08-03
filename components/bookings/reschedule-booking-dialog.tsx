@@ -16,7 +16,7 @@ import { RescheduleFlow } from "@/components/booking/reschedule-flow"
 import {
   getHostRescheduleSlots,
   rescheduleBookingAsHost,
-} from "@/actions/booking-management.actions"
+} from "@/actions/booking-lifecycle.actions"
 
 export function RescheduleBookingDialog({
   orgSlug,

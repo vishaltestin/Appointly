@@ -15,18 +15,18 @@ Appointly is a multi-tenant SaaS appointment scheduling platform (competing with
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js (App Router) |
-| Language | TypeScript (strict) |
-| Styling | Tailwind CSS |
-| UI Components | shadcn/ui |
-| Forms | React Hook Form + Zod validation |
+| Layer         | Technology                                          |
+| ------------- | --------------------------------------------------- |
+| Framework     | Next.js (App Router)                                |
+| Language      | TypeScript (strict)                                 |
+| Styling       | Tailwind CSS                                        |
+| UI Components | shadcn/ui                                           |
+| Forms         | React Hook Form + Zod validation                    |
 | Data Fetching | TanStack Query (client), Server Actions (mutations) |
-| ORM | Prisma |
-| Database | MySQL |
-| Auth | Auth.js v5 (next-auth@beta) |
-| Charts | Recharts |
+| ORM           | Prisma                                              |
+| Database      | MySQL                                               |
+| Auth          | Auth.js v5 (next-auth@beta)                         |
+| Charts        | Recharts                                            |
 
 ---
 
@@ -83,9 +83,10 @@ src/
 │   ├── team.actions.ts
 │   ├── availability.actions.ts
 │   ├── event-type.actions.ts
-│   ├── booking.actions.ts
-│   ├── booking-management.actions.ts  # Cancel, reschedule, approve, decline
+│   ├── booking.actions.ts             # Public booking creation
+│   ├── booking-lifecycle.actions.ts   # Cancel, approve, decline, reschedule
 │   ├── customer.actions.ts
+│   ├── billing.actions.ts         # Plan changes + usage (Module 8)
 │   └── dashboard.actions.ts
 ├── components/
 │   ├── auth/
@@ -107,16 +108,19 @@ src/
 │   ├── availability.ts            # Pure slot calculation engine
 │   ├── booking-engine.ts          # DB-aware slot calculation
 │   ├── schedule-bootstrap.ts      # Ensure default schedule exists
-│   ├── customer-upsert.ts         # Customer upsert on booking create
+│   ├── customer-counters.ts       # Customer aggregate counters (single source)
 │   ├── ics.ts                     # ICS calendar file generation
 │   ├── timezones.ts               # COMMON_TIMEZONES list
+│   ├── plans.ts                   # Plan catalog + limits (Module 8)
+│   ├── usage.ts                   # Usage counts + limit gates (Module 8)
+│   ├── chart-theme.ts             # Recharts theme tokens (Module 8)
 │   └── validations/               # Zod schemas
 │       ├── auth.schema.ts
 │       ├── org.schema.ts
 │       ├── availability.schema.ts
 │       ├── event-type.schema.ts
 │       ├── booking.schema.ts
-│       ├── booking-management.schema.ts
+│       ├── booking-management.schema.ts   # cancelBookingSchema
 │       ├── customer.schema.ts
 │       └── admin.schema.ts
 ├── auth.ts
@@ -443,37 +447,42 @@ model Customer {
 
 ## Module Progress
 
-| # | Module | Status |
-|---|--------|--------|
-| 1 | Foundation + Auth (Auth.js v5, JWT, credentials + Google OAuth) | ✅ Complete |
-| 2 | Organization/Workspace + Team Members & Roles (invitations, membership) | ✅ Complete |
-| 3 | Admin dashboard + route gates + middleware.ts | ✅ Complete |
-| 4 | Availability engine (working hours, buffers, breaks, holidays, date overrides) | ✅ Complete |
-| 5 | Booking pages + public scheduling flow (event types, booking engine, ICS) | ✅ Complete |
-| 6 | Booking lifecycle (cancel, reschedule, approve/decline, reminders, emails) | ✅ Complete |
-| 7 | Customer management + Dashboard analytics | ✅ Complete |
-| 8 | Billing/subscriptions + dark mode polish | 🔲 Next |
+| #   | Module                                                                         | Status      |
+| --- | ------------------------------------------------------------------------------ | ----------- |
+| 1   | Foundation + Auth (Auth.js v5, JWT, credentials + Google OAuth)                | ✅ Complete |
+| 2   | Organization/Workspace + Team Members & Roles (invitations, membership)        | ✅ Complete |
+| 3   | Admin dashboard + route gates + middleware.ts                                  | ✅ Complete |
+| 4   | Availability engine (working hours, buffers, breaks, holidays, date overrides) | ✅ Complete |
+| 5   | Booking pages + public scheduling flow (event types, booking engine, ICS)      | ✅ Complete |
+| 6   | Booking lifecycle (cancel, reschedule, approve/decline, reminders, emails)     | ✅ Complete |
+| 7   | Customer management + Dashboard analytics                                      | ✅ Complete |
+| 8   | Manual billing/plans + feature gates + dark mode polish                        | ✅ Complete |
+| 9   | Stripe self-serve checkout                                                     | 🔲 Next     |
 
 ---
 
 ## Key Design Decisions & Trade-offs
 
 ### Auth
+
 - **JWT strategy** (not database sessions) for edge compatibility
 - **Split config**: `auth.config.ts` (edge-safe, no bcrypt/Prisma) vs `auth.ts` (full Node runtime)
 - **Middleware** handles route protection: `/dashboard`, `/admin`, `/settings` require auth; `/admin` requires `SUPER_ADMIN`
 
 ### Multi-tenancy
+
 - **Row-level isolation**: Every query filters by `organizationId` via `requireOrgMembership(orgSlug)`
 - **Org suspension**: Suspended orgs get 404 on all public pages (booking, manage)
 - **User suspension**: Suspended users can't log in; their event types don't appear on public pages
 
 ### Availability
+
 - **Pure function** `getAvailableSlots()` computes slots from working hours, date overrides, buffers, busy periods
 - **DB-aware layer** `getEventTypeSlots()` adds booking conflict checking on top
 - **PENDING bookings block slots** (not just CONFIRMED) to prevent double-booking unapproved requests
 
 ### Bookings
+
 - **Snapshot pattern**: `eventTitle`, `durationMinutes`, `hostName`, `hostEmail`, `hostTimezone` are copied to Booking at creation — deleting event type or removing member preserves history
 - **Double-booking protection**: `Serializable` isolation transaction re-checks for conflicts before insert (best-effort, not bulletproof — MySQL lacks range exclusion constraints)
 - **Reschedule = cancel old + create new**, linked via `rescheduledFromId` (preserves full audit history)
@@ -481,11 +490,23 @@ model Customer {
 - **Manage tokens**: `manageToken` is crypto-random hex (not cuid/uuid) — it's the authorization boundary for public manage pages
 
 ### Customers
+
 - **Scoped to Organization** (same person in 2 orgs = 2 customer rows)
 - **Upserted on booking create** inside the same transaction
 - **Denormalized counters** (`totalBookings`, `completedBookings`, `cancelledBookings`) — updated on create/cancel, avoids COUNT queries on every render
 
+### Billing & Plans (Module 8)
+
+- **Manual billing** — no payment gateway. Money is collected offline; a SUPER_ADMIN records the plan change in `/admin/plans`. Every change writes a `PlanChangeLog` row (org update + log entry in one transaction).
+- **Plan catalog lives in `lib/plans.ts`** — a plain module (no `server-only`) so client components can import it for the comparison table. `null` limit = unlimited.
+- **Enforcement lives in `lib/usage.ts`** and is called from _server actions_, never only the UI. Disabled buttons are a courtesy; the action is the boundary.
+- **Seats = members + pending invitations.** Otherwise a 1-seat workspace could queue 20 invites and blow past the cap when they're accepted.
+- **Downgrades never destroy data.** An org over its new limit keeps everything and simply can't create more until it's back under. Deleting customer data on a billing change is indefensible.
+- **`changedBy` is a bare user ID with no FK** — deleting an admin must not shred the audit trail. Names are resolved in a second query.
+- **Indicative MRR only** — the admin figure reflects recorded plans, not collected payments.
+
 ### Emails
+
 - **All stubs** (console.log) — ready to swap with Resend/SendGrid/SES
 - Function names: `sendBookingConfirmationEmail`, `sendBookingCancellationEmail`, `sendBookingRescheduledEmail`, `sendBookingPendingApprovalEmail`, `sendHostApprovalRequiredEmail`, `sendBookingApprovedEmail`, `sendBookingDeclinedEmail`, `sendBookingReminderEmail`, `sendInvitationEmail`
 
@@ -502,6 +523,8 @@ model Customer {
 - **TanStack Query** for client-side data fetching with cache invalidation on mutations
 - **`revalidatePath`** in server actions after mutations that affect server-rendered pages
 - **No barrel exports** — import directly from source files
+- **Recharts colors use `var(--token)`, never `hsl(var(--token))`** — `globals.css` defines tokens as complete `oklch(...)` values, so wrapping them in `hsl()` produces invalid CSS. Shared helpers live in `lib/chart-theme.ts`.
+- **Every hardcoded palette utility needs a `dark:` pair** (`text-emerald-600 dark:text-emerald-400`)
 - **Prisma imports** use `@/generated/prisma/client` (not `@prisma/client`) — the generator outputs to `../generated/prisma`
 
 ---
@@ -528,29 +551,109 @@ CRON_SECRET="generate-with-openssl-rand-base64-32"
 4. `event_types_and_bookings` — EventType, BookingQuestion, Booking
 5. `booking_lifecycle` — manageToken, cancellation fields, reschedule chain, reminderSentAt, requiresConfirmation
 6. `customers` — Customer model, Booking.customerId
-7. `manual_billing` — SubscriptionPlan enum, Organization.plan/planChangedBy/planChangedAt/planNotes, PlanChangeLog model (schema only — no implementation yet)
+7. `manual_billing` — SubscriptionPlan enum, Organization.plan/planChangedBy/planChangedAt/planNotes, PlanChangeLog model (implemented in Module 8; no further migration needed)
 
 > Note: Prisma client is generated to `../generated/prisma`. Import with `from "@/generated/prisma/client"`.
 
 ---
 
-## What's Next: Module 8
+## What Module 8 Shipped
 
-### Billing & Subscriptions
-- **Schema is ready** — `SubscriptionPlan` enum, plan fields on `Organization`, `PlanChangeLog` model already exist
-- Plan tiers (Free / Pro / Business) with limits
-- Admin can manually change org plans (no payment gateway — collect payment offline)
-- Feature gates: limit event types and team members per plan
-- Plan & Usage settings page for org owners (usage meters, plan comparison)
-- Audit trail for plan changes
+### Billing & Subscriptions (manual)
+
+- `lib/plans.ts` — Free / Pro / Business catalog with per-plan limits
+- `lib/usage.ts` — `getOrganizationUsage()` + `canCreateEventType()` / `canAddTeamMember()` / `canAddBookingQuestions()`
+- Gates wired into `createEventType`, `updateBookingQuestions`, `inviteMember`
+- `/app/[orgSlug]/settings/plan` — usage meters, plan comparison, owner-only history
+- `/admin/plans` — plan filter tabs, indicative MRR, per-org change dialog
+- Plan badges in the sidebar, admin org table, and org detail page
+- `UpgradeNotice` shown at the point of friction before the create button errors
 
 ### Dark Mode Polish
-- Audit all pages for dark mode consistency
-- Fix Recharts theming (use CSS variables instead of hardcoded colors)
-- Status badges dark mode contrast
-- Ensure no hardcoded `bg-white`, `text-black`, `border-gray-*` anywhere
+
+- Fixed `hsl(var(--token))` → `var(--token)` in both Recharts components (was invalid CSS in _both_ themes, not just dark)
+- Added `lib/chart-theme.ts` so chart theming has one source of truth
+- Paired every remaining single-tone palette utility with a `dark:` variant
+- Added a discoverable `ThemeToggle` (light/dark/system) to both headers — previously dark mode was only reachable via the undocumented `d` hotkey
+
+### Bugs fixed along the way (pre-existing, were breaking `next build`)
+
+- `booking-approval.actions.ts` — `sendBookingDeclinedEmail` missing required `hostName`
+- `api/cron/send-reminders` — `sendBookingReminderEmail` missing required `counterpartName`
+- `booking-management.actions.ts` — extracted a named `RescheduleResult` union so callers can narrow on `res.error` and reach `newManageToken`
+
+## Cleanup Pass (post-Module 8)
+
+### Booking lifecycle consolidated into one module
+
+Four overlapping modules exported the same function names. They are now a
+single canonical `actions/booking-lifecycle.actions.ts`:
+
+| Deleted                                       | Fate                                        |
+| --------------------------------------------- | ------------------------------------------- |
+| `actions/booking-management.actions.ts`       | merged                                      |
+| `actions/booking-approval.actions.ts`         | merged                                      |
+| `actions/booking-public-lifecycle.actions.ts` | merged (was orphaned)                       |
+| `actions/reschedule.actions.ts`               | merged (was orphaned)                       |
+| `lib/customer-upsert.ts`                      | replaced by `lib/customer-counters.ts`      |
+| `lib/validations/booking-lifecycle.schema.ts` | duplicate of `booking-management.schema.ts` |
+
+The best implementation won on each axis: `validateReschedulable` and the
+original-duration handling came from the orphaned `reschedule.actions.ts`;
+the counter adjustment came from the orphaned `booking-public-lifecycle`.
+
+### Customer counter drift — fixed
+
+`Customer.completedBookings` / `cancelledBookings` drifted on every
+cancellation because the wired cancel path never adjusted them. All
+transitions now live in `lib/customer-counters.ts` and run **inside the
+booking's own transaction**.
+
+Counter definitions (mirrored by the repair script):
+
+- `totalBookings` — rows excluding ones superseded by a reschedule
+- `completedBookings` — rows currently CONFIRMED
+- `cancelledBookings` — CANCELLED rows not superseded by a reschedule
+
+**Reschedule is deliberately a no-op** — the deltas cancel out exactly, so
+adjusting counters there would _cause_ drift.
+
+Existing data needs a one-time repair: `npm run fix:customer-counters`
+(dry run) then `-- --apply`.
+
+### Other fixes
+
+- **Transaction bug**: `booking.actions.ts` called the customer upsert with the global `db` handle from inside `$transaction`, so the customer row committed even if the booking insert rolled back. Now takes `tx`.
+- **`canManageAllBookings` is now wired** — ADMIN/OWNER can manage any booking in their workspace via `requireManageableBooking()`; MEMBER is still host-only. Previously defined but never called.
+- **`/dashboard` → `/app`** in `auth.config.ts` (both redirects pointed at a route that doesn't exist).
+- **`dotenv` and `server-only` added to `package.json`** — both were imported directly but only present transitively; a clean install could break.
+- **`@types/bcryptjs` removed** — bcryptjs v3 ships its own types.
+- **`useBrowserTimezone` hook** replaces two `setState`-in-effect patterns that tripped `react-hooks/set-state-in-effect` and caused every slot list to render once in UTC before snapping to the real timezone.
+- **`knip.json` added** with `npm run knip`.
+- **README rewritten** (was the untouched Next.js template) and `.env.example` added.
+
+### Verification
+
+| Command                   | Result                                                                |
+| ------------------------- | --------------------------------------------------------------------- |
+| `npm run typecheck`       | 0 errors                                                              |
+| `npm run lint`            | 0 errors, 5 warnings (all react-hook-form `watch()` compiler notices) |
+| `npm run verify:plans`    | 20/20                                                                 |
+| `npm run verify:counters` | 9/9                                                                   |
+| `npm run build`           | passes                                                                |
+
+`verify:counters` cross-checks the incremental counter path against a
+recompute-from-scratch across 9 lifecycle scenarios — including double
+reschedules and reschedule-then-cancel. Both must always agree.
+
+### Known remaining
+
+- `leaveOrganization` and `useOrg` are implemented but have no UI yet.
+- 5 React Compiler warnings from `react-hook-form`'s `watch()` — library limitation, not fixable here.
+- DB-backed paths are verified by types/build only; no MySQL was available in the dev sandbox.
 
 ### Potential Future Enhancements (Post Module 8)
+
 - Stripe integration (self-service checkout, webhooks, customer portal)
 - Google Calendar / Outlook sync (two-way)
 - Real email delivery (swap stubs with Resend/SES)

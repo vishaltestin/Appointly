@@ -10,7 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
 import { getInitials } from "@/lib/utils"
 import { removeMember, updateMemberRole } from "@/actions/member.actions"
 import type { OrgRole } from "@/generated/prisma/client"

@@ -16,7 +16,7 @@ import {
 import {
   approveBooking,
   declineBooking,
-} from "@/actions/booking-approval.actions"
+} from "@/actions/booking-lifecycle.actions"
 
 export function PendingBookingActions({
   orgSlug,
@@ -48,7 +48,9 @@ export function PendingBookingActions({
   function handleDecline() {
     setError(null)
     startTransition(async () => {
-      const res = await declineBooking(orgSlug, bookingId, reason)
+      const res = await declineBooking(orgSlug, bookingId, {
+        reason: reason || undefined,
+      })
       if (res?.error) {
         setError(res.error)
         return
