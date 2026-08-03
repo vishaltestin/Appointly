@@ -59,6 +59,12 @@ enum CancelledBy {
   ATTENDEE
 }
 
+enum SubscriptionPlan {
+  FREE
+  PRO
+  BUSINESS
+}
+
 model User {
   id            String     @id @default(cuid())
   name          String?
@@ -141,7 +147,29 @@ model Organization {
   bookings   Booking[]
   customers  Customer[]
 
+  plan           SubscriptionPlan @default(FREE)
+  planChangedBy  String?
+  planChangedAt  DateTime?
+  planNotes      String?          @db.Text
+  planChangeLogs PlanChangeLog[]
+
+  @@index([plan])
   @@map("organizations")
+}
+
+model PlanChangeLog {
+  id             String           @id @default(cuid())
+  organizationId String
+  fromPlan       SubscriptionPlan
+  toPlan         SubscriptionPlan
+  changedBy      String // Admin user ID
+  notes          String?          @db.Text
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("plan_change_logs")
 }
 
 model Membership {
