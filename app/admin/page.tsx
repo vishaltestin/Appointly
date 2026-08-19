@@ -10,7 +10,6 @@ import {
 import { db } from "@/lib/db"
 import { StatCard } from "@/components/admin/stat-card"
 import { StatusBadge } from "@/components/shared/status-badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default async function AdminOverviewPage() {
   const now = new Date()
@@ -72,72 +71,62 @@ export default async function AdminOverviewPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold">
-              Recent workspaces
-            </CardTitle>
+        <div className="rounded-xl border bg-card">
+          <div className="flex items-center justify-between border-b p-4">
+            <h2 className="text-sm font-semibold">Recent workspaces</h2>
             <Link
               href="/admin/organizations"
               className="text-xs text-primary hover:underline"
             >
               View all
             </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {recentOrgs.map((org) => (
-                <Link
-                  key={org.id}
-                  href={`/admin/organizations/${org.id}`}
-                  className="flex items-center justify-between p-4 transition-colors hover:bg-muted/50"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{org.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {org._count.memberships} members ·{" "}
-                      {formatDistanceToNow(org.createdAt, { addSuffix: true })}
-                    </p>
-                  </div>
-                  <StatusBadge status={org.status} />
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="divide-y">
+            {recentOrgs.map((org) => (
+              <Link
+                key={org.id}
+                href={`/admin/organizations/${org.id}`}
+                className="flex items-center justify-between p-4 hover:bg-muted/50"
+              >
+                <div>
+                  <p className="text-sm font-medium">{org.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {org._count.memberships} members ·{" "}
+                    {formatDistanceToNow(org.createdAt, { addSuffix: true })}
+                  </p>
+                </div>
+                <StatusBadge status={org.status} />
+              </Link>
+            ))}
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold">
-              Recent users
-            </CardTitle>
+        <div className="rounded-xl border bg-card">
+          <div className="flex items-center justify-between border-b p-4">
+            <h2 className="text-sm font-semibold">Recent users</h2>
             <Link
               href="/admin/users"
               className="text-xs text-primary hover:underline"
             >
               View all
             </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {recentUsers.map((user) => (
-                <Link
-                  key={user.id}
-                  href={`/admin/users/${user.id}`}
-                  className="flex items-center justify-between p-4 transition-colors hover:bg-muted/50"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {user.email}
-                    </p>
-                  </div>
-                  <StatusBadge status={user.status} />
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="divide-y">
+            {recentUsers.map((user) => (
+              <Link
+                key={user.id}
+                href={`/admin/users/${user.id}`}
+                className="flex items-center justify-between p-4 hover:bg-muted/50"
+              >
+                <div>
+                  <p className="text-sm font-medium">{user.name}</p>
+                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                </div>
+                <StatusBadge status={user.status} />
+              </Link>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -1,9 +1,8 @@
 import { db } from "@/lib/db"
 import { requireOrgMembership } from "@/lib/session"
 import { OrgProvider } from "@/lib/org-context"
-import { AppSidebar } from "@/components/layout/dashboard-sidebar"
+import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
 import { DashboardHeader } from "@/components/layout/dashboard-header"
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 
 export default async function OrgLayout({
   children,
@@ -50,19 +49,13 @@ export default async function OrgLayout({
         role: membership.role,
       }}
     >
-      <SidebarProvider>
-        <AppSidebar
+      <div className="flex min-h-screen">
+        <DashboardSidebar
           organizations={orgList}
           currentSlug={orgSlug}
           plan={membership.organization.plan}
-          user={{
-            name: membership.user.name,
-            email: membership.user.email,
-            image: membership.user.image,
-          }}
-          isSuperAdmin={membership.user.globalRole === "SUPER_ADMIN"}
         />
-        <SidebarInset>
+        <div className="flex flex-1 flex-col">
           <DashboardHeader
             user={{
               name: membership.user.name,
@@ -71,11 +64,9 @@ export default async function OrgLayout({
             }}
             isSuperAdmin={membership.user.globalRole === "SUPER_ADMIN"}
           />
-          <main className="flex-1 bg-muted/30 p-4 sm:p-6 lg:p-8">
-            {children}
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
+          <main className="flex-1 bg-muted/30 p-6">{children}</main>
+        </div>
+      </div>
     </OrgProvider>
   )
 }
