@@ -42,7 +42,7 @@ export default async function MembersSettingsPage({
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-medium">Team members</h2>
+          <h2 className="text-lg font-semibold">Team members</h2>
           <p className="text-sm text-muted-foreground">
             {members.length} member{members.length !== 1 && "s"} in this
             workspace

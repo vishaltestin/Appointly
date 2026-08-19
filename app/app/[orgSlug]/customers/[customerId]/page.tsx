@@ -12,6 +12,9 @@ import { requireOrgMembership } from "@/lib/session"
 import { getCustomer } from "@/actions/customer.actions"
 import { CustomerNotesEditor } from "@/components/customers/customer-notes-editor"
 import { CustomerBookingHistory } from "@/components/customers/customer-booking-history"
+import { Card, CardContent } from "@/components/ui/card"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { getInitials } from "@/lib/utils"
 
 export default async function CustomerDetailPage({
   params,
@@ -27,37 +30,44 @@ export default async function CustomerDetailPage({
   const { customer, bookings } = result
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <Link
           href={`/app/${orgSlug}/customers`}
-          className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Back to customers
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {customer.name}
-        </h1>
-        <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-          <Mail className="h-3.5 w-3.5" />
-          {customer.email}
-        </p>
+        <div className="flex items-center gap-3">
+          <Avatar className="h-12 w-12">
+            <AvatarFallback>{getInitials(customer.name)}</AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {customer.name}
+            </h1>
+            <p className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Mail className="h-3.5 w-3.5" />
+              {customer.email}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
-          icon={<Calendar className="h-4 w-4" />}
+          icon={<Calendar className="h-4 w-4 text-blue-500" />}
           label="Total bookings"
           value={customer.totalBookings}
         />
         <StatCard
-          icon={<CalendarCheck className="h-4 w-4" />}
+          icon={<CalendarCheck className="h-4 w-4 text-emerald-500" />}
           label="Completed"
           value={customer.completedBookings}
         />
         <StatCard
-          icon={<CalendarX className="h-4 w-4" />}
+          icon={<CalendarX className="h-4 w-4 text-rose-500" />}
           label="Cancelled"
           value={customer.cancelledBookings}
         />
@@ -99,12 +109,14 @@ function StatCard({
   value: number
 }) {
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
-    </div>
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {icon}
+          {label}
+        </div>
+        <p className="mt-1 text-2xl font-bold">{value}</p>
+      </CardContent>
+    </Card>
   )
 }
