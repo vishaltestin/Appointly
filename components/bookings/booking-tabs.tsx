@@ -24,7 +24,7 @@ export function BookingTabs({ pendingCount = 0 }: { pendingCount?: number }) {
           key={tab.key}
           href={`${pathname}?tab=${tab.key}`}
           className={cn(
-            "flex items-center gap-1.5 border-b-2 px-4 pb-3 pt-1 text-sm font-medium transition-colors",
+            "flex items-center gap-1.5 border-b-2 px-3 pb-3 text-sm font-medium transition-colors",
             active === tab.key
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground"

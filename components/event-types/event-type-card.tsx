@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { MoreHorizontal, Clock, Loader2, Link as LinkIcon, Eye } from "lucide-react"
+import { MoreHorizontal, Clock, Loader2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -72,78 +72,68 @@ export function EventTypeCard({ orgSlug, eventType }: EventTypeCardProps) {
   }
 
   return (
-    <>
-      <div className="flex items-center gap-4 rounded-xl border bg-card p-4 transition-colors hover:border-primary/20 sm:p-5">
+    <div className="flex items-center justify-between rounded-lg border bg-card p-4">
+      <div className="flex items-center gap-3">
         <span
-          className="h-12 w-1.5 shrink-0 rounded-full"
+          className="h-10 w-1.5 rounded-full"
           style={{ backgroundColor: eventType.color }}
         />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/app/${orgSlug}/event-types/${eventType.id}`}
-              className="truncate font-medium hover:underline"
-            >
-              {eventType.title}
-            </Link>
-            {!eventType.isActive && (
-              <Badge variant="outline" className="shrink-0 text-[10px]">
-                Hidden
-              </Badge>
-            )}
-            {eventType.requiresConfirmation && (
-              <Badge variant="outline" className="shrink-0 text-[10px]">
-                Approval
-              </Badge>
-            )}
-          </div>
-          <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+        <div>
+          <Link
+            href={`/app/${orgSlug}/event-types/${eventType.id}`}
+            className="font-medium hover:underline"
+          >
+            {eventType.title}
+          </Link>
+          <p className="flex items-center gap-1 text-sm text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
             {eventType.durationMinutes} min
           </p>
         </div>
+        {!eventType.isActive && <Badge variant="outline">Hidden</Badge>}
+        {eventType.requiresConfirmation && <Badge variant="outline">Requires approval</Badge>}
 
-        <div className="flex items-center gap-2">
-          <CopyLinkButton url={publicUrl} />
-          <Switch
-            checked={eventType.isActive}
-            onCheckedChange={(v) => handleToggle(Boolean(v))}
-            disabled={isPending}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <CopyLinkButton url={publicUrl} />
+        <Switch
+          checked={eventType.isActive}
+          onCheckedChange={(v) => handleToggle(Boolean(v))}
+          disabled={isPending}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            }
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
               render={
-                <Button variant="ghost" size="icon-sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
+                <Link href={`/app/${orgSlug}/event-types/${eventType.id}`}>
+                  Edit
+                </Link>
               }
             />
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                render={
-                  <Link href={`/app/${orgSlug}/event-types/${eventType.id}`}>
-                    Edit
-                  </Link>
-                }
-              />
-              <DropdownMenuItem
-                render={
-                  <a href={publicUrl} target="_blank" rel="noreferrer">
-                    <Eye className="mr-2 h-4 w-4" />
-                    Preview
-                  </a>
-                }
-              />
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => setConfirmDelete(true)}
-              >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            <DropdownMenuItem
+              render={
+                <a href={publicUrl} target="_blank" rel="noreferrer">
+                  Preview
+                </a>
+              }
+            />
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => setConfirmDelete(true)}
+            >
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
@@ -168,6 +158,6 @@ export function EventTypeCard({ orgSlug, eventType }: EventTypeCardProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   )
 }

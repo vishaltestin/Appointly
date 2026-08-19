@@ -25,7 +25,7 @@ export default async function ScheduleEditorPage({
       <div>
         <Link
           href={`/app/${orgSlug}/availability`}
-          className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Back to schedules

@@ -5,7 +5,6 @@ import { db } from "@/lib/db"
 import { requireOrgMembership } from "@/lib/session"
 import { EventTypeEditor } from "@/components/event-types/event-type-editor"
 import { CopyLinkButton } from "@/components/event-types/copy-link-button"
-import { Button } from "@/components/ui/button"
 
 export default async function EventTypeEditorPage({
   params,
@@ -33,7 +32,7 @@ export default async function EventTypeEditorPage({
       <div>
         <Link
           href={`/app/${orgSlug}/event-types`}
-          className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Back to event types
@@ -44,10 +43,15 @@ export default async function EventTypeEditorPage({
           </h1>
           <div className="flex gap-2">
             <CopyLinkButton url={publicUrl} />
-            <Button variant="outline" size="sm" render={<a href={publicUrl} target="_blank" rel="noreferrer" />}>
-              <ExternalLink className="mr-1 h-3.5 w-3.5" />
+            <a
+              href={publicUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
               Preview
-            </Button>
+            </a>
           </div>
         </div>
       </div>

@@ -21,7 +21,7 @@ export function SettingsTabs({ orgSlug }: { orgSlug: string }) {
             key={tab.href}
             href={tab.href}
             className={cn(
-              "border-b-2 px-4 pb-3 pt-1 text-sm font-medium transition-colors",
+              "border-b-2 px-3 pb-3 text-sm font-medium transition-colors",
               active
                 ? "border-primary text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"

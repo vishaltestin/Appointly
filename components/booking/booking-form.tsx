@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createPublicBooking } from "@/actions/booking.actions"
-import { toast } from "sonner"
 
 interface Question {
   id: string
@@ -72,10 +71,7 @@ export function BookingForm({
         if (res.slotTaken) onSlotTaken()
         return
       }
-      if (res?.bookingId) {
-        toast.success("Booking confirmed!")
-        onSuccess(res.bookingId)
-      }
+      if (res?.bookingId) onSuccess(res.bookingId)
     })
   }
 
@@ -91,7 +87,6 @@ export function BookingForm({
         <Label htmlFor="attendeeName">Name</Label>
         <Input
           id="attendeeName"
-          placeholder="Your full name"
           {...register("attendeeName", { required: true })}
         />
       </div>
@@ -100,7 +95,6 @@ export function BookingForm({
         <Input
           id="attendeeEmail"
           type="email"
-          placeholder="you@example.com"
           {...register("attendeeEmail", { required: true })}
         />
       </div>
@@ -125,12 +119,7 @@ export function BookingForm({
 
       <div className="space-y-2">
         <Label htmlFor="attendeeNotes">Additional notes (optional)</Label>
-        <Textarea
-          id="attendeeNotes"
-          rows={3}
-          placeholder="Anything you'd like the host to know"
-          {...register("attendeeNotes")}
-        />
+        <Textarea id="attendeeNotes" rows={3} {...register("attendeeNotes")} />
       </div>
 
       <Button type="submit" className="w-full" disabled={isPending}>

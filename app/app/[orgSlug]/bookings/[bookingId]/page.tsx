@@ -15,9 +15,6 @@ import { BookingStatusBadge } from "@/components/bookings/booking-status-badge"
 import { CancelBookingDialog } from "@/components/bookings/cancel-booking-dialog"
 import { RescheduleBookingDialog } from "@/components/bookings/reschedule-booking-dialog"
 import { PendingBookingActions } from "@/components/bookings/pending-booking-actions"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { getInitials } from "@/lib/utils"
 
 export default async function BookingDetailPage({
   params,
@@ -44,11 +41,11 @@ export default async function BookingDetailPage({
   const responses = (booking.responses as Record<string, string> | null) ?? {}
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-6">
       <div>
         <Link
           href={`/app/${orgSlug}/bookings`}
-          className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Back to bookings
@@ -85,55 +82,42 @@ export default async function BookingDetailPage({
         </div>
       )}
 
-      <Card>
-        <CardContent className="space-y-3 pt-6">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="text-xs">
-                {getInitials(booking.attendeeName)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-medium">{booking.attendeeName}</p>
-              <p className="text-sm text-muted-foreground">
-                {booking.attendeeEmail}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            {format(booking.startTime, "EEEE, MMMM d, yyyy · h:mm a")} (
-            {booking.durationMinutes} min)
-          </div>
-          {booking.attendeeNotes && (
-            <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-sm">
-              <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <p>{booking.attendeeNotes}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="space-y-3 rounded-lg border bg-card p-5">
+        <p className="flex items-center gap-2 text-sm">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          {format(booking.startTime, "EEEE, MMMM d, yyyy · h:mm a")} (
+          {booking.durationMinutes} min)
+        </p>
+        <p className="flex items-center gap-2 text-sm">
+          <User className="h-4 w-4 text-muted-foreground" />
+          {booking.attendeeName}
+        </p>
+        <p className="flex items-center gap-2 text-sm">
+          <Mail className="h-4 w-4 text-muted-foreground" />
+          {booking.attendeeEmail}
+        </p>
+        {booking.attendeeNotes && (
+          <p className="flex items-start gap-2 text-sm">
+            <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+            {booking.attendeeNotes}
+          </p>
+        )}
+      </div>
 
       {booking.eventType && booking.eventType.questions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Responses</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {booking.eventType.questions.map((q) => (
-              <div key={q.id}>
-                <p className="text-xs text-muted-foreground">{q.label}</p>
-                <p className="mt-0.5 text-sm font-medium">
-                  {responses[q.id] || "—"}
-                </p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <div className="space-y-3 rounded-lg border bg-card p-5">
+          <h2 className="text-sm font-semibold">Responses</h2>
+          {booking.eventType.questions.map((q) => (
+            <div key={q.id}>
+              <p className="text-sm text-muted-foreground">{q.label}</p>
+              <p className="text-sm">{responses[q.id] || "—"}</p>
+            </div>
+          ))}
+        </div>
       )}
 
       {booking.status === "CANCELLED" && !booking.rescheduledTo && (
-        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
           <p className="font-medium text-destructive">
             Cancelled by{" "}
             {booking.cancelledBy === "HOST" ? "you" : "the attendee"}
@@ -147,18 +131,16 @@ export default async function BookingDetailPage({
       )}
 
       {booking.status === "PENDING" && (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="mb-3 text-sm text-muted-foreground">
-              This booking is awaiting your approval.
-            </p>
-            <PendingBookingActions
-              orgSlug={orgSlug}
-              bookingId={booking.id}
-              size="default"
-            />
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border p-4">
+          <p className="mb-3 text-sm text-muted-foreground">
+            This booking is awaiting your approval.
+          </p>
+          <PendingBookingActions
+            orgSlug={orgSlug}
+            bookingId={booking.id}
+            size="default"
+          />
+        </div>
       )}
 
       {isUpcoming && (

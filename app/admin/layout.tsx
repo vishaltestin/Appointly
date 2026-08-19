@@ -1,7 +1,6 @@
 import { requireSuperAdmin } from "@/lib/session"
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
-import { DashboardHeader } from "@/components/layout/dashboard-header"
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+import { AdminHeader } from "@/components/admin/admin-header"
 
 export default async function AdminLayout({
   children,
@@ -11,16 +10,14 @@ export default async function AdminLayout({
   const admin = await requireSuperAdmin()
 
   return (
-    <SidebarProvider>
+    <div className="flex min-h-screen">
       <AdminSidebar />
-      <SidebarInset>
-        <DashboardHeader
-          user={{ name: admin.name, email: admin.email, image: admin.image }}
+      <div className="flex flex-1 flex-col">
+        <AdminHeader
+          admin={{ name: admin.name, email: admin.email, image: admin.image }}
         />
-        <main className="flex-1 bg-muted/30 p-4 sm:p-6 lg:p-8">
-          {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+        <main className="flex-1 bg-muted/30 p-6">{children}</main>
+      </div>
+    </div>
   )
 }
