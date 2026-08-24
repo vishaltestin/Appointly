@@ -57,7 +57,7 @@ const FEATURES = [
     icon: BarChart3,
     title: "Customers & analytics",
     description:
-      "Every booking builds a customer record automatically. Dashboards show volume, peak times and top event types.",
+      "Every booking builds a customer record automatically — with per-customer booking links, notes and full history at a glance.",
   },
   {
     icon: ShieldCheck,

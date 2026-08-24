@@ -22,12 +22,16 @@ export default async function OrgLayout({
   })
 
   // Track most recently visited org for the /app default redirect.
-  if (membership.user.lastActiveOrgId !== membership.organizationId) {
-    await db.user.update({
-      where: { id: membership.userId },
-      data: { lastActiveOrgId: membership.organizationId },
-    })
-  }
+  // updateMany keeps this a single atomic UPDATE — the adapter's
+  // read-modify-write path on user.update races with concurrent RSC
+  // renders (prefetches) and intermittently fails with P2039.
+  await db.user.updateMany({
+    where: {
+      id: membership.userId,
+      NOT: { lastActiveOrgId: membership.organizationId },
+    },
+    data: { lastActiveOrgId: membership.organizationId },
+  })
 
   const orgList = organizations.map((m) => ({
     id: m.organization.id,

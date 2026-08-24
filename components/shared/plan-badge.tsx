@@ -4,7 +4,7 @@ import type { SubscriptionPlan } from "@/generated/prisma/client"
 
 const STYLES: Record<SubscriptionPlan, string> = {
   FREE: "bg-zinc-100 text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300",
-  PRO: "bg-violet-100 text-violet-700 hover:bg-violet-100 dark:bg-violet-950 dark:text-violet-300",
+  PRO: "bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300",
   BUSINESS:
     "bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300",
 }

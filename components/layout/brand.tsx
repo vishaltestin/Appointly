@@ -1,8 +1,7 @@
-import { CalendarClock } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 /**
- * Appointly wordmark: calendar glyph in a primary tile + name.
+ * Appointly wordmark: the Digital Fueled "DF" mark in a rounded tile + name.
  * Server-safe — usable in any layout, public page, or email-style footer.
  */
 export function Brand({
@@ -18,11 +17,16 @@ export function Brand({
     <span className={cn("flex items-center gap-2", className)}>
       <span
         className={cn(
-          "flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground",
+          "flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg",
           iconClassName
         )}
       >
-        <CalendarClock className="size-4" strokeWidth={2.25} />
+        {/* eslint-disable-next-line @next/next/no-img-element -- server-safe brand mark, no next/image needed */}
+        <img
+          src="/brand-mark.png"
+          alt=""
+          className="size-full object-cover"
+        />
       </span>
       <span
         className={cn(

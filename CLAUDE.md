@@ -956,3 +956,61 @@ cramped; reschedule time-slot options render edge-to-edge.
   booking page (slot grid renders, zero console errors).
 - Temp tooling removed after verification (playwright devDependency + all
   ad-hoc harness scripts). Nothing committed — working tree only.
+
+## Round 5 — Company branding (Digital Fueled logo) & sidebar spacing
+
+User supplied the Digital Fueled company logo and asked to (a) use it as the
+Appointly logo while keeping the "Appointly" name, (b) match the whole color
+theme to the logo, and (c) fix the sidebar where the active item's background
+collides with the hover background of the item below it.
+
+### What changed
+
+- **Brand mark**: the DF monogram was cropped out of the supplied artwork to
+  `public/brand-mark.png` (218×218 RGBA) and `components/layout/brand.tsx`
+  now renders it in the rounded tile next to the "Appointly" wordmark
+  (replacing the calendar glyph). Same mark powers `app/favicon.ico`.
+- **Theme tokens** (`app/globals.css`) re-based on the logo palette sampled
+  from the artwork — royal blue `#00339c` (`oklch(0.374 0.177 262.3)`) as
+  light-mode primary, azure `#176cb6` for rings/accents, navy-tinted neutrals
+  (hue 262/255). Dark mode uses brightened azure primary
+  `oklch(0.59 0.152 252.3)` so buttons stay AA-legible on the deep navy
+  background. Sidebar tokens (accent/ring/primary) match in both modes.
+  Landing, auth split panel, charts, toggles, tabs and the public booking
+  pages all pick the new palette up automatically (all gradients were already
+  `var(--primary)`-based).
+- **Stray violet leftovers** replaced with blue: PRO plan badge, super-admin
+  badge, dashboard stat icon tint.
+- **Sidebar spacing**: `components/ui/sidebar.tsx` `SidebarMenu` gap `0` →
+  `1.5`, so active and hovered items never visually touch (covers the mobile
+  sheet sidebar too, same component).
+- **Demo data is now part of the repo**: idempotent `prisma/seed-demo.ts`
+  (+ `npm run db:seed:demo` script) — resets all non-SUPER_ADMIN data and
+  seeds a 13-org dataset: Acme Studio (PRO, 3 roles, 5 event types, schedules
+  with overrides, ~35 bookings incl. pending approvals/cancellations,
+  ~28 customers with exact production aggregate counters, createdAt spread so
+  charts render realistically) plus 12 solo orgs (mixed plans, one suspended,
+  plan-change audit rows) for the admin tables. Customer counters verified
+  zero-drift via `npm run fix:customer-counters` after reseeding.
+
+### Bug fixes
+
+- **P2039 race in the org layout**: `app/app/[orgSlug]/layout.tsx` updated
+  `lastActiveOrgId` via `user.update` (Prisma adapter read-modify-write);
+  concurrent RSC renders/prefetches intermittently failed with "Record has
+  changed since last read" (observed as full error pages in production
+  screenshots). Now an atomic `updateMany` guarded by `NOT: {lastActiveOrgId}`
+  — single UPDATE statement, no read window, and it skips no-op writes.
+  Verified: full screenshot pass after the fix shows zero server errors.
+
+### Verification
+
+- Production build; full Playwright pass (desktop 1440 light+dark incl. a
+  dedicated sidebar active+hover capture, mobile 390, member role, public
+  booking pages, admin tables with super admin login) — zero console/page
+  errors.
+- Gates: `tsc` 0 errors · `eslint` 0 errors / 13 pre-existing warnings ·
+  `knip` baseline · `verify:plans` 20/20 · `verify:counters` 9/9 ·
+  `fix:customer-counters` zero drift · build green.
+- Temp tooling removed (playwright, shot scripts, local screenshots).
+  Nothing committed — working tree only.

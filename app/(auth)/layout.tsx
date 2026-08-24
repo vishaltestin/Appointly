@@ -36,7 +36,7 @@ export default function AuthLayout({
         />
         <Link href="/" className="relative z-10">
           <Brand
-            iconClassName="bg-white/15 text-white"
+            iconClassName="bg-white text-white"
             labelClassName="text-white"
           />
         </Link>

@@ -174,6 +174,7 @@ scheduler that can POST with `Authorization: Bearer $CRON_SECRET`.
 | `npm run format` | Prettier write |
 | `npm run knip` | Unused files/exports/deps — keep clean |
 | `npm run db:seed` | Create the first super admin |
+| `npm run db:seed:demo` | Reset + load full demo dataset (idempotent — see below) |
 | `npm run verify:plans` | 20 assertions on plan-limit math (no DB needed) |
 | `npm run verify:counters` | 9 lifecycle scenarios, incremental vs recompute |
 | `npm run fix:customer-counters` | Audit/repair drifted customer aggregates |
@@ -181,6 +182,25 @@ scheduler that can POST with `Authorization: Bearer $CRON_SECRET`.
 Before merging anything: `typecheck`, `lint`, `knip`, both verifiers, and
 a clean `build`. `typescript.ignoreBuildErrors` must stay off — green means
 real.
+
+
+### Demo dataset
+
+`npm run db:seed:demo` wipes every row except SUPER_ADMIN users and seeds a
+complete, schema-consistent demo set:
+
+- **Acme Studio** (PRO) with three members — `amara@example.com` (OWNER),
+  `dev@example.com` (ADMIN), `riya@example.com` (MEMBER) — all with password
+  `Demo12345`. Five event types, weekly schedules with date overrides, and
+  ~35 bookings spanning past and upcoming weeks (confirmed, pending-approval,
+  cancelled) linked to ~28 auto-built customer records whose aggregate
+  counters are recomputed with the exact production definitions
+  (`npm run fix:customer-counters` must report zero drift after a reseed).
+- **12 solo organizations** (`owner-<slug>@example.com`, same password) with
+  mixed plans, staggered creation dates, one suspended workspace, and a few
+  plan-change audit rows — so the super-admin tables are populated.
+
+The script is idempotent: re-running resets to this exact state.
 
 ## 7. Deployment
 

@@ -64,7 +64,7 @@ const columns: ColumnDef<UserRow>[] = [
     header: "Role",
     cell: ({ row }) =>
       row.original.globalRole === "SUPER_ADMIN" ? (
-        <Badge className="bg-violet-100 text-violet-700 hover:bg-violet-100 dark:bg-violet-950 dark:text-violet-400">
+        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-400">
           Super admin
         </Badge>
       ) : (

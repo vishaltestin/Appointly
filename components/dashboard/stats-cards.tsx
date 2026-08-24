@@ -37,7 +37,7 @@ export function StatsCards({ stats }: { stats: Stats }) {
       value: stats.totalHours,
       icon: Clock,
       description: "Total completed hours",
-      color: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+      color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
     },
   ]
 

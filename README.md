@@ -53,6 +53,7 @@ required only if you schedule the reminder job.
 | `npm run format`                | Prettier write                                |
 | `npm run knip`                  | Find unused files, exports, and dependencies  |
 | `npm run db:seed`               | Create the first super admin                  |
+| `npm run db:seed:demo`          | Reset + reseed rich demo data (see SETUP.md)  |
 | `npm run verify:plans`          | Assertions for plan-limit math (no DB needed) |
 | `npm run fix:customer-counters` | Audit/repair drifted customer aggregates      |
 
