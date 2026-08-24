@@ -3,12 +3,15 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import {
   CalendarCheck,
+  CalendarX2,
   Clock,
+  Hourglass,
   Loader2,
-  XCircle,
   ArrowRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -25,6 +28,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { RescheduleFlow } from "@/components/booking/reschedule-flow"
+import { cn } from "@/lib/utils"
+import {
+  cancelBookingSchema,
+  type CancelBookingInput,
+} from "@/lib/validations/booking-management.schema"
 import {
   cancelBookingAsAttendee,
   getAttendeeRescheduleSlots,
@@ -54,20 +62,28 @@ export function ManageBookingView({
   const [cancelledBy, setCancelledBy] = useState(booking.cancelledBy)
   const [mode, setMode] = useState<"view" | "reschedule">("view")
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [reason, setReason] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CancelBookingInput>({
+    resolver: zodResolver(cancelBookingSchema),
+    defaultValues: { reason: "" },
+  })
 
   const isPast = booking.startTime < new Date()
   const canCancel = (status === "CONFIRMED" || status === "PENDING") && !isPast
   const canReschedule = status === "CONFIRMED" && !isPast
   const wasRescheduled = !!rescheduledToManageToken
 
-  function handleCancel() {
+  function onCancelSubmit(values: CancelBookingInput) {
     setError(null)
     startTransition(async () => {
       const res = await cancelBookingAsAttendee(booking.manageToken, {
-        reason: reason || undefined,
+        reason: values.reason?.trim() ? values.reason.trim() : undefined,
       })
       if (res?.error) {
         setError(res.error)
@@ -80,27 +96,40 @@ export function ManageBookingView({
   }
 
   return (
-    <div className="w-full max-w-md rounded-xl border bg-card p-8 shadow-sm">
+    <div
+      className={cn(
+        "w-full rounded-2xl border bg-card p-6 shadow-lg shadow-foreground/5 transition-[max-width] duration-300 sm:p-10",
+        mode === "reschedule" ? "max-w-3xl" : "max-w-md"
+      )}
+    >
       <div className="text-center">
         {status === "CANCELLED" ? (
-          <XCircle className="mx-auto h-10 w-10 text-muted-foreground" />
+          <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted ring-4 ring-muted/40">
+            <CalendarX2 className="size-6 text-muted-foreground" />
+          </span>
+        ) : status === "PENDING" ? (
+          <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-500/10 ring-4 ring-amber-500/5">
+            <Hourglass className="size-6 text-amber-600 dark:text-amber-400" />
+          </span>
         ) : (
-          <CalendarCheck className="mx-auto h-10 w-10 text-primary" />
+          <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10 ring-4 ring-primary/5">
+            <CalendarCheck className="size-6 text-primary" />
+          </span>
         )}
         <h1 className="mt-3 text-lg font-semibold">{booking.eventTitle}</h1>
         <p className="text-sm text-muted-foreground">with {booking.hostName}</p>
       </div>
 
-      <div className="mt-6 space-y-2 rounded-lg bg-muted p-4 text-sm">
-        <p className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-muted-foreground" />
+      <div className="mt-6 flex items-center gap-2.5 rounded-lg bg-muted/70 px-4 py-3 text-sm">
+        <Clock className="size-4 shrink-0 text-muted-foreground" />
+        <span>
           {format(booking.startTime, "EEEE, MMMM d, yyyy · h:mm a")} (
           {booking.durationMinutes} min)
-        </p>
+        </span>
       </div>
 
       {status === "PENDING" && (
-        <Alert className="mt-4">
+        <Alert className="mt-4 border-amber-500/30 bg-amber-500/5">
           <AlertDescription>
             This booking is awaiting approval from {booking.hostName}.
             You&apos;ll receive an email once it&apos;s confirmed.
@@ -139,7 +168,14 @@ export function ManageBookingView({
       )}
 
       {mode === "reschedule" && canReschedule && (
-        <div className="mt-6">
+        <div className="mt-8 border-t pt-8">
+          <h2 className="text-base font-semibold tracking-tight">
+            Pick a new time
+          </h2>
+          <p className="mb-6 mt-1 text-sm text-muted-foreground">
+            Your booking moves as soon as you confirm — a fresh confirmation
+            lands in your inbox.
+          </p>
           <RescheduleFlow
             queryKeyPrefix={`attendee-reschedule-${booking.manageToken}`}
             fetchSlots={(s, e) =>
@@ -180,38 +216,43 @@ export function ManageBookingView({
                 }
               />
               <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {status === "PENDING"
-                      ? "Withdraw this request?"
-                      : "Cancel this booking?"}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {booking.hostName} will be notified immediately.
-                  </DialogDescription>
-                </DialogHeader>
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                <div className="space-y-2">
-                  <Label htmlFor="reason">Reason (optional)</Label>
-                  <Textarea
-                    id="reason"
-                    rows={3}
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                  />
-                </div>
-                <DialogFooter>
-                  <Button
-                    variant="destructive"
-                    disabled={isPending}
-                    onClick={handleCancel}
-                  >
-                    {isPending && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <form onSubmit={handleSubmit(onCancelSubmit)}>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {status === "PENDING"
+                        ? "Withdraw this request?"
+                        : "Cancel this booking?"}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {booking.hostName} will be notified immediately.
+                    </DialogDescription>
+                  </DialogHeader>
+                  {error && (
+                    <p className="mt-3 text-sm text-destructive">{error}</p>
+                  )}
+                  <div className="mt-4 space-y-2">
+                    <Label htmlFor="reason">Reason (optional)</Label>
+                    <Textarea
+                      id="reason"
+                      rows={3}
+                      aria-invalid={!!errors.reason}
+                      {...register("reason")}
+                    />
+                    {errors.reason && (
+                      <p className="text-sm text-destructive">
+                        {errors.reason.message}
+                      </p>
                     )}
-                    Confirm
-                  </Button>
-                </DialogFooter>
+                  </div>
+                  <DialogFooter className="mt-4">
+                    <Button type="submit" variant="destructive" disabled={isPending}>
+                      {isPending && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Confirm
+                    </Button>
+                  </DialogFooter>
+                </form>
               </DialogContent>
             </Dialog>
           )}

@@ -1,9 +1,7 @@
-import Link from "next/link"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { auth } from "@/auth"
 import { acceptInvitation } from "@/actions/member.actions"
-import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -13,6 +11,7 @@ import {
 } from "@/components/ui/card"
 import { GoogleAuthButton } from "@/components/auth/google-auth-button"
 import { AuthDivider } from "@/components/auth/auth-divider"
+import { LinkButton } from "@/components/shared/link-button"
 
 const googleEnabled = Boolean(
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
@@ -107,20 +106,17 @@ export default async function InvitePage({
             </>
           )}
 
-          <Button>
-            <Link
-              href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}
-            >
-              Sign in to accept
-            </Link>
-          </Button>
-          <Button variant="outline">
-            <Link
-              href={`/register?email=${encodeURIComponent(invitation.email)}&token=${token}`}
-            >
-              Create an account
-            </Link>
-          </Button>
+          <LinkButton
+            href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+          >
+            Sign in to accept
+          </LinkButton>
+          <LinkButton
+            href={`/register?email=${encodeURIComponent(invitation.email)}&token=${token}`}
+            variant="outline"
+          >
+            Create an account
+          </LinkButton>
         </CardContent>
       </Card>
     </div>
@@ -142,9 +138,7 @@ function InviteMessage({
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button>
-            <Link href="/app">Go to dashboard</Link>
-          </Button>
+          <LinkButton href="/app">Go to dashboard</LinkButton>
         </CardContent>
       </Card>
     </div>

@@ -2,8 +2,11 @@
 
 import { useState, useTransition } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { CalendarIcon, Loader2 } from "lucide-react"
+import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
@@ -25,7 +28,25 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { TimeSelect } from "@/components/availability/time-select"
+import { dateOverrideSchema } from "@/lib/validations/availability.schema"
 import { addDateOverride } from "@/actions/availability.actions"
+
+/**
+ * UI form shape: the schema wants startTime/endTime only for CUSTOM_HOURS;
+ * the form keeps them always visible-but-conditional, so the UI schema
+ * carries the date as optional (to surface "pick a date" on submit).
+ */
+const formSchema = z.object({
+  date: z.custom<Date>(
+    (v) => v instanceof Date && !isNaN(v.getTime()),
+    "Pick a date first."
+  ),
+  unavailable: z.boolean(),
+  startTime: z.string(),
+  endTime: z.string(),
+  reason: z.string().max(100, "Keep it under 100 characters"),
+})
+type FormInput = z.infer<typeof formSchema>
 
 export function AddOverrideDialog({
   orgSlug,
@@ -36,38 +57,55 @@ export function AddOverrideDialog({
 }) {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [date, setDate] = useState<Date | undefined>()
-  const [unavailable, setUnavailable] = useState(true)
-  const [startTime, setStartTime] = useState("09:00")
-  const [endTime, setEndTime] = useState("17:00")
-  const [reason, setReason] = useState("")
-  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  function handleSave() {
-    if (!date) {
-      setError("Pick a date first.")
+  const {
+    register,
+    handleSubmit,
+    setError,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<FormInput>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      unavailable: true,
+      startTime: "09:00",
+      endTime: "17:00",
+      reason: "",
+    },
+  })
+
+  const date = watch("date")
+  const unavailable = watch("unavailable")
+
+  function onSubmit(values: FormInput) {
+    const parsed = dateOverrideSchema.safeParse({
+      date: values.date,
+      type: values.unavailable ? "UNAVAILABLE" : "CUSTOM_HOURS",
+      startTime: values.unavailable ? undefined : values.startTime,
+      endTime: values.unavailable ? undefined : values.endTime,
+      reason: values.reason.trim() ? values.reason.trim() : undefined,
+    })
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0]
+      setError((issue.path[0] as "endTime") ?? "root.serverError", {
+        message: issue.message,
+      })
       return
     }
-    setError(null)
     startTransition(async () => {
-      const res = await addDateOverride(orgSlug, scheduleId, {
-        date,
-        type: unavailable ? "UNAVAILABLE" : "CUSTOM_HOURS",
-        startTime: unavailable ? undefined : startTime,
-        endTime: unavailable ? undefined : endTime,
-        reason: reason || undefined,
-      })
+      const res = await addDateOverride(orgSlug, scheduleId, parsed.data)
       if (res?.error) {
-        setError(res.error)
+        setError("root.serverError", { message: res.error })
         return
       }
       queryClient.invalidateQueries({
         queryKey: ["schedule-preview", scheduleId],
       })
       setOpen(false)
-      setDate(undefined)
-      setReason("")
+      reset()
     })
   }
 
@@ -81,73 +119,108 @@ export function AddOverrideDialog({
         }
       />
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add a date override</DialogTitle>
-          <DialogDescription>
-            Block off a holiday, or set special hours for a specific date.
-          </DialogDescription>
-        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Add a date override</DialogTitle>
+            <DialogDescription>
+              Block off a holiday, or set special hours for a specific date.
+            </DialogDescription>
+          </DialogHeader>
 
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+          {errors.root?.serverError && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                {errors.root.serverError.message}
+              </AlertDescription>
+            </Alert>
+          )}
 
-        <Popover>
-          <PopoverTrigger
-            render={
-              <Button variant="outline" className="w-full justify-start">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP") : "Pick a date"}
-              </Button>
-            }
-          />
-          <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={setDate}
-              disabled={{ before: new Date() }}
-            />
-          </PopoverContent>
-        </Popover>
-
-        <div className="flex items-center justify-between rounded-md border p-3">
-          <Label htmlFor="unavailable-toggle" className="text-sm">
-            Mark entire day unavailable
-          </Label>
-          <Switch
-            id="unavailable-toggle"
-            checked={unavailable}
-            onCheckedChange={(v) => setUnavailable(Boolean(v))}
-          />
-        </div>
-
-        {!unavailable && (
-          <div className="flex items-center gap-2">
-            <TimeSelect value={startTime} onChange={setStartTime} />
-            <span className="text-sm text-muted-foreground">to</span>
-            <TimeSelect value={endTime} onChange={setEndTime} />
+          <div className="space-y-2">
+            <Popover>
+              <PopoverTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP") : "Pick a date"}
+                  </Button>
+                }
+              />
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(d) => setValue("date", d as Date, { shouldDirty: true })}
+                  disabled={{ before: new Date() }}
+                />
+              </PopoverContent>
+            </Popover>
+            {errors.date && (
+              <p className="text-sm text-destructive">{errors.date.message}</p>
+            )}
           </div>
-        )}
 
-        <div className="space-y-2">
-          <Label htmlFor="reason">Label (optional)</Label>
-          <Input
-            id="reason"
-            placeholder="e.g. Christmas Day"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
-        </div>
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <Label htmlFor="unavailable-toggle" className="text-sm">
+              Mark entire day unavailable
+            </Label>
+            <Switch
+              id="unavailable-toggle"
+              checked={unavailable}
+              onCheckedChange={(v) =>
+                setValue("unavailable", Boolean(v), { shouldDirty: true })
+              }
+            />
+          </div>
 
-        <DialogFooter>
-          <Button onClick={handleSave} disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save override
-          </Button>
-        </DialogFooter>
+          {!unavailable && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <TimeSelect
+                  value={watch("startTime")}
+                  onChange={(v) =>
+                    setValue("startTime", v, { shouldDirty: true })
+                  }
+                />
+                <span className="text-sm text-muted-foreground">to</span>
+                <TimeSelect
+                  value={watch("endTime")}
+                  onChange={(v) => setValue("endTime", v, { shouldDirty: true })}
+                />
+              </div>
+              {errors.endTime && (
+                <p className="text-sm text-destructive">
+                  {errors.endTime.message}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="override-reason">Label (optional)</Label>
+            <Input
+              id="override-reason"
+              placeholder="e.g. Christmas, Team offsite"
+              aria-invalid={!!errors.reason}
+              {...register("reason")}
+            />
+            {errors.reason && (
+              <p className="text-sm text-destructive">
+                {errors.reason.message}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="submit" disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save override
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

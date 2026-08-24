@@ -16,7 +16,7 @@ export default async function ManageBookingPage({
   if (!booking) notFound()
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
+    <div className="flex flex-1 items-center justify-center p-4 py-12 sm:p-6">
       <ManageBookingView
         booking={{
           manageToken: booking.manageToken,

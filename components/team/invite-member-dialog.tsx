@@ -112,13 +112,19 @@ export function InviteMemberDialog({
               }}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue>{(v) => (v === "ADMIN" ? "Admin" : "Member")}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="MEMBER">Member</SelectItem>
                 <SelectItem value="ADMIN">Admin</SelectItem>
               </SelectContent>
             </Select>
+            {/* Mirrors lib/permissions.ts — keep the two in sync. */}
+            <p className="text-xs leading-5 text-muted-foreground">
+              {watch("role") === "ADMIN"
+                ? "Admins run the workspace: they see and manage everyone's bookings, invite and remove members, and edit workspace settings."
+                : "Members run their own calendar: personal event types and availability, and only their own bookings. No access to workspace settings."}
+            </p>
           </div>
 
           <DialogFooter>

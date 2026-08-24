@@ -72,13 +72,13 @@ export function EventTypeCard({ orgSlug, eventType }: EventTypeCardProps) {
   }
 
   return (
-    <div className="flex items-center justify-between rounded-lg border bg-card p-4">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center justify-between rounded-xl border bg-card p-4 shadow-xs transition-shadow duration-200 hover:shadow-sm">
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
         <span
-          className="h-10 w-1.5 rounded-full"
+          className="h-10 w-1.5 shrink-0 rounded-full"
           style={{ backgroundColor: eventType.color }}
         />
-        <div>
+        <div className="min-w-0">
           <Link
             href={`/app/${orgSlug}/event-types/${eventType.id}`}
             className="font-medium hover:underline"

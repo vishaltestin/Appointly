@@ -4,6 +4,7 @@ import { format } from "date-fns"
 import {
   CheckCircle2,
   Clock,
+  Hourglass,
   Mail,
   MapPin,
   Phone,
@@ -13,7 +14,7 @@ import {
 import { db } from "@/lib/db"
 import { generateICS } from "@/lib/ics"
 import { AddToCalendarButton } from "@/components/booking/add-to-calendar-button"
-import { Button } from "@/components/ui/button"
+import { LinkButton } from "@/components/shared/link-button"
 
 const LOCATION_ICONS = {
   IN_PERSON: MapPin,
@@ -27,16 +28,27 @@ export default async function BookingConfirmationPage({
 }: {
   params: Promise<{ orgSlug: string; eventSlug: string; bookingId: string }>
 }) {
-  const { bookingId } = await params
+  const { orgSlug, bookingId } = await params
 
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    include: { eventType: true },
+    include: { eventType: true, organization: { select: { slug: true } } },
   })
-  if (!booking) notFound()
+  if (!booking || booking.organization.slug !== orgSlug) notFound()
+
+  const isPending = booking.status === "PENDING"
 
   const locationType = booking.eventType?.locationType ?? "ONLINE_MEETING"
   const LocationIcon = LOCATION_ICONS[locationType]
+  const locationLabel =
+    booking.eventType?.locationValue ||
+    (locationType === "ONLINE_MEETING"
+      ? "Online meeting"
+      : locationType === "PHONE_CALL"
+        ? "Phone call"
+        : locationType === "IN_PERSON"
+          ? "In person"
+          : "Details to follow")
 
   const icsContent = generateICS({
     uid: booking.id,
@@ -50,44 +62,73 @@ export default async function BookingConfirmationPage({
   })
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
-      <div className="w-full max-w-md rounded-xl border bg-card p-8 text-center shadow-sm">
-        <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500 dark:text-emerald-400" />
-        <h1 className="mt-4 text-xl font-semibold">Booking confirmed</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          A confirmation has been sent to {booking.attendeeEmail}.
+    <div className="flex flex-1 items-center justify-center p-4 py-12 sm:p-6">
+      <div className="w-full max-w-md rounded-2xl border bg-card p-8 text-center shadow-lg shadow-foreground/5">
+        {isPending ? (
+          <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-amber-500/10 ring-4 ring-amber-500/5">
+            <Hourglass className="size-7 text-amber-600 dark:text-amber-400" />
+          </span>
+        ) : (
+          <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-500/10 ring-4 ring-emerald-500/5">
+            <CheckCircle2 className="size-7 text-emerald-600 dark:text-emerald-400" />
+          </span>
+        )}
+        <h1 className="mt-4 text-xl font-semibold tracking-tight">
+          {isPending ? "Request sent" : "Booking confirmed"}
+        </h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          {isPending ? (
+            <>
+              {booking.hostName} will review your request — you&apos;ll get an
+              email at {booking.attendeeEmail} once it&apos;s confirmed.
+            </>
+          ) : (
+            <>A confirmation has been sent to {booking.attendeeEmail}.</>
+          )}
         </p>
 
-        <div className="mt-6 space-y-2 rounded-lg bg-muted p-4 text-left text-sm">
+        <div className="mt-6 space-y-2.5 rounded-xl bg-muted/70 p-4 text-left text-sm">
           <p className="font-medium">{booking.eventTitle}</p>
           <p className="flex items-center gap-2 text-muted-foreground">
-            <Clock className="h-4 w-4" />
+            <Clock className="h-4 w-4 shrink-0" />
             {format(booking.startTime, "EEEE, MMMM d · h:mm a")} (
             {booking.durationMinutes} min)
           </p>
           <p className="flex items-center gap-2 text-muted-foreground">
-            <LocationIcon className="h-4 w-4" />
-            {booking.eventType?.locationValue || "Details to follow"}
+            <LocationIcon className="h-4 w-4 shrink-0" />
+            <span className="break-all">{locationLabel}</span>
           </p>
           <p className="flex items-center gap-2 text-muted-foreground">
-            <Mail className="h-4 w-4" />
+            <Mail className="h-4 w-4 shrink-0" />
             with {booking.hostName}
           </p>
         </div>
 
         <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-          <AddToCalendarButton
-            icsContent={icsContent}
-            filename={`${booking.eventTitle}.ics`}
-          />
-          <Button variant="outline" className="flex-1">
-            <Link href={`/manage/${booking.manageToken}`}>Manage booking</Link>
-          </Button>
+          {!isPending && (
+            <AddToCalendarButton
+              icsContent={icsContent}
+              filename={`${booking.eventTitle}.ics`}
+            />
+          )}
+          <LinkButton
+            variant="outline"
+            className="flex-1"
+            href={`/manage/${booking.manageToken}`}
+          >
+            Manage booking
+          </LinkButton>
         </div>
 
         <p className="mt-6 text-xs text-muted-foreground">
-          Need to reschedule? That capability is coming soon — for now, cancel
-          and rebook a new time.
+          Need to make a change? Use{" "}
+          <Link
+            href={`/manage/${booking.manageToken}`}
+            className="font-medium text-primary hover:underline"
+          >
+            Manage booking
+          </Link>{" "}
+          to reschedule or cancel anytime.
         </p>
       </div>
     </div>

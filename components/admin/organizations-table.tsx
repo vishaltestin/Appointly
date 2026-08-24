@@ -1,18 +1,14 @@
+"use client"
+
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import type { ColumnDef } from "@tanstack/react-table"
+import { DataTable } from "@/components/shared/data-table"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { PlanBadge } from "@/components/shared/plan-badge"
 import type { SubscriptionPlan } from "@/generated/prisma/client"
 
-interface OrgRow {
+export interface OrgRow {
   id: string
   name: string
   slug: string
@@ -22,55 +18,75 @@ interface OrgRow {
   createdAt: Date
 }
 
+const columns: ColumnDef<OrgRow>[] = [
+  {
+    id: "name",
+    // Name + slug in one accessor: both sorts sensibly by name and makes the
+    // global filter match "/acme-studio" too.
+    accessorFn: (org) => `${org.name} ${org.slug}`,
+    header: "Workspace",
+    meta: { csvValue: (org) => org.name },
+    cell: ({ row }) => (
+      <div>
+        <Link
+          href={`/admin/organizations/${row.original.id}`}
+          className="font-medium hover:underline"
+        >
+          {row.original.name}
+        </Link>
+        <p className="text-xs text-muted-foreground">/{row.original.slug}</p>
+      </div>
+    ),
+  },
+  {
+    accessorKey: "plan",
+    header: "Plan",
+    cell: ({ row }) => <PlanBadge plan={row.original.plan} />,
+  },
+  {
+    accessorKey: "memberCount",
+    header: "Members",
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => <StatusBadge status={row.original.status} />,
+  },
+  {
+    accessorKey: "createdAt",
+    header: "Created",
+    meta: {
+      csvHeader: "Created",
+      csvValue: (org) => new Date(org.createdAt).toISOString().slice(0, 10),
+    },
+    cell: ({ row }) => (
+      <span className="text-sm text-muted-foreground">
+        {formatDistanceToNow(new Date(row.original.createdAt), {
+          addSuffix: true,
+        })}
+      </span>
+    ),
+  },
+]
+
 export function OrganizationsTable({
   organizations,
+  initialSearch,
 }: {
   organizations: OrgRow[]
+  initialSearch?: string
 }) {
-  if (organizations.length === 0) {
-    return (
-      <p className="p-8 text-center text-sm text-muted-foreground">
-        No workspaces found.
-      </p>
-    )
-  }
-
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Workspace</TableHead>
-          <TableHead>Plan</TableHead>
-          <TableHead>Members</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Created</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {organizations.map((org) => (
-          <TableRow key={org.id}>
-            <TableCell>
-              <Link
-                href={`/admin/organizations/${org.id}`}
-                className="font-medium hover:underline"
-              >
-                {org.name}
-              </Link>
-              <p className="text-xs text-muted-foreground">/{org.slug}</p>
-            </TableCell>
-            <TableCell>
-              <PlanBadge plan={org.plan} />
-            </TableCell>
-            <TableCell>{org.memberCount}</TableCell>
-            <TableCell>
-              <StatusBadge status={org.status} />
-            </TableCell>
-            <TableCell className="text-sm text-muted-foreground">
-              {formatDistanceToNow(org.createdAt, { addSuffix: true })}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <DataTable
+      columns={columns}
+      data={organizations}
+      csvFilename="appointly-organizations"
+      searchPlaceholder="Search name or URL…"
+      initialSearch={initialSearch}
+      emptyState={{
+        title: "No workspaces found",
+        description: "Try a different search.",
+      }}
+    />
   )
 }

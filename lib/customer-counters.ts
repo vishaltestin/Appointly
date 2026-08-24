@@ -1,6 +1,5 @@
 import "server-only"
 import { Prisma } from "@/generated/prisma/client"
-import { db } from "@/lib/db"
 
 /**
  * Customer aggregate counters.
@@ -127,34 +126,8 @@ export async function onBookingCancelled(
 }
 
 /**
- * Recomputes one customer's counters from their actual bookings.
- * Used by scripts/recompute-customer-counters.ts to repair historical drift.
- * Exported here so the definitions above stay the single source of truth.
+ * Historical drift repair lives in scripts/recompute-customer-counters.ts.
+ * That script can't import this module (it's "server-only", which throws
+ * under tsx), so it inlines its own recompute against the definitions above
+ * — keep the two in sync.
  */
-export async function recomputeCustomerCounters(customerId: string) {
-  const [total, completed, cancelled, bounds] = await Promise.all([
-    db.booking.count({ where: { customerId, rescheduledTo: null } }),
-    db.booking.count({ where: { customerId, status: "CONFIRMED" } }),
-    db.booking.count({
-      where: { customerId, status: "CANCELLED", rescheduledTo: null },
-    }),
-    db.booking.aggregate({
-      where: { customerId },
-      _min: { startTime: true },
-      _max: { startTime: true },
-    }),
-  ])
-
-  await db.customer.update({
-    where: { id: customerId },
-    data: {
-      totalBookings: total,
-      completedBookings: completed,
-      cancelledBookings: cancelled,
-      firstBookingAt: bounds._min.startTime,
-      lastBookingAt: bounds._max.startTime,
-    },
-  })
-
-  return { total, completed, cancelled }
-}

@@ -53,7 +53,7 @@ export default async function PlanSettingsPage({
 
           <div className="text-right">
             <p className="text-2xl font-semibold tracking-tight">
-              {plan.price === 0 ? "Free" : `$${plan.price}`}
+              {plan.price === 0 ? "Free" : `₹${plan.price}`}
               {plan.price > 0 && (
                 <span className="text-sm font-normal text-muted-foreground">
                   /month

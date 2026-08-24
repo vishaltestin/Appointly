@@ -11,9 +11,41 @@
  *
  *   npx tsx scripts/recompute-customer-counters.ts          # report only
  *   npx tsx scripts/recompute-customer-counters.ts --apply  # write fixes
+ *
+ * Note: the definitions are inlined here instead of importing
+ * lib/customer-counters.ts because that module is guarded by "server-only",
+ * which always throws outside the React Server Components runtime (i.e.
+ * under tsx). Keep this in sync with the definitions documented at the top
+ * of lib/customer-counters.ts.
  */
 import { db } from "@/lib/db"
-import { recomputeCustomerCounters } from "@/lib/customer-counters"
+
+// Mirrors the counter definitions in lib/customer-counters.ts.
+async function recomputeCustomerCounters(customerId: string) {
+  const [total, completed, cancelled, bounds] = await Promise.all([
+    db.booking.count({ where: { customerId, rescheduledTo: null } }),
+    db.booking.count({ where: { customerId, status: "CONFIRMED" } }),
+    db.booking.count({
+      where: { customerId, status: "CANCELLED", rescheduledTo: null },
+    }),
+    db.booking.aggregate({
+      where: { customerId },
+      _min: { startTime: true },
+      _max: { startTime: true },
+    }),
+  ])
+
+  await db.customer.update({
+    where: { id: customerId },
+    data: {
+      totalBookings: total,
+      completedBookings: completed,
+      cancelledBookings: cancelled,
+      firstBookingAt: bounds._min.startTime,
+      lastBookingAt: bounds._max.startTime,
+    },
+  })
+}
 
 const APPLY = process.argv.includes("--apply")
 

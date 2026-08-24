@@ -1,9 +1,8 @@
-import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Building2, Mail, PlusCircle } from "lucide-react"
 import { db } from "@/lib/db"
 import { requireAuth } from "@/lib/session"
-import { Button } from "@/components/ui/button"
+import { LinkButton } from "@/components/shared/link-button"
 import {
   Card,
   CardContent,
@@ -53,9 +52,9 @@ export default async function NoWorkspacePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full">
-                <Link href="/app/new">Create workspace</Link>
-              </Button>
+              <LinkButton href="/app/new" className="w-full">
+                Create workspace
+              </LinkButton>
             </CardContent>
           </Card>
 

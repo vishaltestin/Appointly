@@ -29,7 +29,7 @@ export function TimeSelect({
       disabled={disabled}
     >
       <SelectTrigger className="w-[110px]">
-        <SelectValue />
+        <SelectValue>{(v) => TIME_OPTIONS.find((o) => o.value === v)?.label ?? v}</SelectValue>
       </SelectTrigger>
       <SelectContent className="max-h-64">
         {TIME_OPTIONS.map((opt) => (

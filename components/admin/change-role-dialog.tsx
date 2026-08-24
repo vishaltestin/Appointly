@@ -1,7 +1,11 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { Loader2, ShieldCheck } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -22,6 +26,10 @@ import {
 import { updateUserGlobalRole } from "@/actions/admin.actions"
 import type { GlobalRole } from "@/generated/prisma/client"
 
+const roleSchema = z.object({
+  globalRole: z.enum(["USER", "SUPER_ADMIN"]),
+})
+
 export function ChangeRoleDialog({
   userId,
   userName,
@@ -32,20 +40,32 @@ export function ChangeRoleDialog({
   currentRole: GlobalRole
 }) {
   const [open, setOpen] = useState(false)
-  const [role, setRole] = useState<GlobalRole>(currentRole)
   const [isPending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
-  function handleSave() {
-    setError(null)
+  const {
+    handleSubmit,
+    setError,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<{ globalRole: GlobalRole }>({
+    resolver: zodResolver(roleSchema),
+    defaultValues: { globalRole: currentRole },
+  })
+  const role = watch("globalRole")
+
+  function onSubmit(values: { globalRole: GlobalRole }) {
     startTransition(async () => {
-      const res = await updateUserGlobalRole({ userId, globalRole: role })
+      const res = await updateUserGlobalRole({
+        userId,
+        globalRole: values.globalRole,
+      })
       if (res?.error) {
-        setError(res.error)
+        setError("root.serverError", { message: res.error })
         return
       }
-      setSuccess(res?.success ?? "Role updated.")
+      setOpen(false)
+      toast.success(res?.success ?? "Role updated.")
     })
   }
 
@@ -60,45 +80,48 @@ export function ChangeRoleDialog({
         }
       />
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Change platform role for {userName}</DialogTitle>
-          <DialogDescription>
-            Super admins can access the platform admin panel across all
-            workspaces.
-          </DialogDescription>
-        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Change platform role for {userName}</DialogTitle>
+            <DialogDescription>
+              Super admins can access the platform admin panel across all
+              workspaces.
+            </DialogDescription>
+          </DialogHeader>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        {success && (
-          <p className="text-sm text-emerald-600 dark:text-emerald-400">
-            {success}
-          </p>
-        )}
+          {errors.root?.serverError && (
+            <p className="text-sm text-destructive">
+              {errors.root.serverError.message}
+            </p>
+          )}
 
-        <Select
-          value={role}
-          onValueChange={(next: string | null) => {
-            if (next) setRole(next as GlobalRole)
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="USER">User</SelectItem>
-            <SelectItem value="SUPER_ADMIN">Super admin</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <DialogFooter>
-          <Button
-            disabled={isPending || role === currentRole}
-            onClick={handleSave}
+          <Select
+            value={role}
+            onValueChange={(next: string | null) => {
+              if (next)
+                setValue("globalRole", next as GlobalRole, {
+                  shouldDirty: true,
+                })
+            }}
           >
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save changes
-          </Button>
-        </DialogFooter>
+            <SelectTrigger>
+              <SelectValue>
+                {(v) => (v === "SUPER_ADMIN" ? "Super admin" : "User")}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="USER">User</SelectItem>
+              <SelectItem value="SUPER_ADMIN">Super admin</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <DialogFooter>
+            <Button type="submit" disabled={isPending || role === currentRole}>
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save changes
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

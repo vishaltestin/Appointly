@@ -6,6 +6,7 @@ import { Plus, X, Copy, Loader2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { toast } from "sonner"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,7 +72,6 @@ export function WeeklyHoursEditor({
   )
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
   function updateDay(dayOfWeek: number, updater: (day: DayState) => DayState) {
     setDays((prev) =>
@@ -125,7 +125,6 @@ export function WeeklyHoursEditor({
 
   function handleSave() {
     setError(null)
-    setSuccess(null)
     const payload = {
       days: days.map((d) => ({
         dayOfWeek: d.dayOfWeek,
@@ -139,7 +138,7 @@ export function WeeklyHoursEditor({
         setError(res.error)
         return
       }
-      setSuccess(res?.success ?? "Saved.")
+      toast.success(res?.success ?? "Saved.")
       queryClient.invalidateQueries({
         queryKey: ["schedule-preview", scheduleId],
       })
@@ -151,11 +150,6 @@ export function WeeklyHoursEditor({
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      {success && (
-        <Alert>
-          <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
 

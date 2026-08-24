@@ -1,3 +1,5 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmptyState } from "@/components/shared/empty-state"
 import { BarChart3 } from "lucide-react"
 
 interface EventTypeStat {
@@ -14,15 +16,19 @@ export function PopularEventTypes({
   const maxCount = Math.max(...eventTypes.map((e) => e.count), 1)
 
   return (
-    <div className="rounded-xl border bg-card p-5">
-      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold">
-        <BarChart3 className="h-4 w-4 text-muted-foreground" />
-        Popular event types
-      </h2>
+    <Card>
+      <CardHeader>
+        <CardTitle>Popular event types</CardTitle>
+        <CardDescription>Ranked by total bookings</CardDescription>
+      </CardHeader>
+      <CardContent>
       {eventTypes.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          No bookings yet to rank.
-        </p>
+        <EmptyState
+          icon={BarChart3}
+          title="No bookings yet"
+          description="Once bookings come in, your most popular event types rank here."
+          className="border-0 py-8"
+        />
       ) : (
         <div className="space-y-3">
           {eventTypes.map((et, i) => (
@@ -51,6 +57,7 @@ export function PopularEventTypes({
           ))}
         </div>
       )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }

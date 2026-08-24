@@ -1,10 +1,10 @@
 import { db } from "@/lib/db"
 import { adminListQuerySchema } from "@/lib/validations/admin.schema"
-import { AdminSearchInput } from "@/components/admin/admin-search-input"
 import { OrganizationsTable } from "@/components/admin/organizations-table"
-import { PaginationControls } from "@/components/admin/pagination-controls"
 
-const PAGE_SIZE = 10
+// Client-side filtering, sorting, and pagination handle the rest — the query
+// itself is only an upper bound so a giant install still stays fast.
+const MAX_ROWS = 250
 
 export default async function AdminOrganizationsPage({
   searchParams,
@@ -12,21 +12,15 @@ export default async function AdminOrganizationsPage({
   searchParams: Promise<{ q?: string; page?: string }>
 }) {
   const raw = await searchParams
-  const { q, page } = adminListQuerySchema.parse(raw)
-
-  const where = q
-    ? { OR: [{ name: { contains: q } }, { slug: { contains: q } }] }
-    : {}
+  const { q } = adminListQuerySchema.parse(raw)
 
   const [organizations, total] = await Promise.all([
     db.organization.findMany({
-      where,
       orderBy: { createdAt: "desc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      take: MAX_ROWS,
       include: { _count: { select: { memberships: true } } },
     }),
-    db.organization.count({ where }),
+    db.organization.count(),
   ])
 
   const rows = organizations.map((org) => ({
@@ -45,18 +39,11 @@ export default async function AdminOrganizationsPage({
         <h1 className="text-2xl font-semibold tracking-tight">Organizations</h1>
         <p className="text-sm text-muted-foreground">
           {total} workspace{total !== 1 && "s"} on the platform
+          {total > MAX_ROWS && ` (showing ${MAX_ROWS} most recent)`}
         </p>
       </div>
 
-      <AdminSearchInput placeholder="Search by name or URL..." />
-
-      <div className="rounded-xl border bg-card">
-        <OrganizationsTable organizations={rows} />
-        <PaginationControls
-          page={page}
-          totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
-        />
-      </div>
+      <OrganizationsTable organizations={rows} initialSearch={q} />
     </div>
   )
 }

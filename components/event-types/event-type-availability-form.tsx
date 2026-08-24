@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import {
   eventTypeAvailabilitySchema,
   type EventTypeAvailabilityInput,
@@ -37,7 +38,6 @@ export function EventTypeAvailabilityForm({
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
   const { handleSubmit, watch, setValue, register } =
     useForm<EventTypeAvailabilityInput>({
@@ -47,7 +47,6 @@ export function EventTypeAvailabilityForm({
 
   function onSubmit(values: EventTypeAvailabilityInput) {
     setError(null)
-    setSuccess(null)
     startTransition(async () => {
       const res = await updateEventTypeAvailability(
         orgSlug,
@@ -58,7 +57,7 @@ export function EventTypeAvailabilityForm({
         setError(res.error)
         return
       }
-      setSuccess(res?.success ?? "Saved.")
+      toast.success(res?.success ?? "Saved.")
     })
   }
 
@@ -66,15 +65,13 @@ export function EventTypeAvailabilityForm({
   const requiresConfirmation = watch("requiresConfirmation")
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-5">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="grid w-full gap-x-6 gap-y-6 lg:grid-cols-2"
+    >
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="lg:col-span-2">
           <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      {success && (
-        <Alert>
-          <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
 
@@ -90,7 +87,13 @@ export function EventTypeAvailabilityForm({
           }}
         >
           <SelectTrigger>
-            <SelectValue />
+            <SelectValue>
+              {(v) =>
+                v === "default"
+                  ? "Use my default schedule"
+                  : (schedules.find((s) => s.id === v)?.name ?? v)
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="default">Use my default schedule</SelectItem>
@@ -104,7 +107,7 @@ export function EventTypeAvailabilityForm({
         </Select>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2 xl:grid-cols-4">
         <div className="space-y-2">
           <Label htmlFor="bufferBefore">Buffer before (minutes)</Label>
           <Input
@@ -175,7 +178,7 @@ export function EventTypeAvailabilityForm({
         </div>
       </div>
 
-      <div className="flex items-center justify-between rounded-md border p-3">
+      <div className="flex h-full items-center justify-between rounded-md border p-3 px-4">
         <div>
           <Label className="text-sm">Require manual confirmation</Label>
           <p className="text-xs text-muted-foreground">
@@ -190,10 +193,12 @@ export function EventTypeAvailabilityForm({
         />
       </div>
 
-      <Button type="submit" disabled={isPending}>
-        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Save availability settings
-      </Button>
+      <div className="lg:col-span-2">
+        <Button type="submit" disabled={isPending}>
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save availability settings
+        </Button>
+      </div>
     </form>
   )
 }

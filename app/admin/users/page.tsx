@@ -1,10 +1,10 @@
 import { db } from "@/lib/db"
 import { adminListQuerySchema } from "@/lib/validations/admin.schema"
-import { AdminSearchInput } from "@/components/admin/admin-search-input"
 import { UsersTable } from "@/components/admin/users-table"
-import { PaginationControls } from "@/components/admin/pagination-controls"
 
-const PAGE_SIZE = 10
+// Client-side filtering, sorting, and pagination handle the rest — the query
+// itself is only an upper bound so a giant install still stays fast.
+const MAX_ROWS = 250
 
 export default async function AdminUsersPage({
   searchParams,
@@ -12,21 +12,15 @@ export default async function AdminUsersPage({
   searchParams: Promise<{ q?: string; page?: string }>
 }) {
   const raw = await searchParams
-  const { q, page } = adminListQuerySchema.parse(raw)
-
-  const where = q
-    ? { OR: [{ name: { contains: q } }, { email: { contains: q } }] }
-    : {}
+  const { q } = adminListQuerySchema.parse(raw)
 
   const [users, total] = await Promise.all([
     db.user.findMany({
-      where,
       orderBy: { createdAt: "desc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      take: MAX_ROWS,
       include: { _count: { select: { memberships: true } } },
     }),
-    db.user.count({ where }),
+    db.user.count(),
   ])
 
   const rows = users.map((user) => ({
@@ -46,18 +40,11 @@ export default async function AdminUsersPage({
         <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
         <p className="text-sm text-muted-foreground">
           {total} registered users
+          {total > MAX_ROWS && ` (showing ${MAX_ROWS} most recent)`}
         </p>
       </div>
 
-      <AdminSearchInput placeholder="Search by name or email..." />
-
-      <div className="rounded-xl border bg-card">
-        <UsersTable users={rows} />
-        <PaginationControls
-          page={page}
-          totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
-        />
-      </div>
+      <UsersTable users={rows} initialSearch={q} />
     </div>
   )
 }

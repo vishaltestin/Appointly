@@ -1,7 +1,16 @@
 import Link from "next/link"
 import { format } from "date-fns"
-import { Clock, Mail, ArrowRight } from "lucide-react"
+import { Clock, Mail, ArrowRight, CalendarClock } from "lucide-react"
 import { BookingStatusBadge } from "@/components/bookings/booking-status-badge"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { EmptyState } from "@/components/shared/empty-state"
 
 interface UpcomingBooking {
   id: string
@@ -21,20 +30,28 @@ export function UpcomingBookingsList({
   bookings: UpcomingBooking[]
 }) {
   return (
-    <div className="rounded-xl border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Upcoming bookings</h2>
-        <Link
-          href={`/app/${orgSlug}/bookings`}
-          className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-        >
-          View all <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Upcoming bookings</CardTitle>
+        <CardDescription>Your next confirmed meetings</CardDescription>
+        <CardAction>
+          <Link
+            href={`/app/${orgSlug}/bookings`}
+            className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            View all <ArrowRight className="size-3" />
+          </Link>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
       {bookings.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          No upcoming bookings.
-        </p>
+        <EmptyState
+          icon={CalendarClock}
+          title="No upcoming bookings"
+          description="Share your booking page link to start getting booked."
+          action={{ href: `/app/${orgSlug}/event-types`, label: "Go to event types" }}
+          className="border-0 py-8"
+        />
       ) : (
         <div className="divide-y">
           {bookings.map((b) => (
@@ -61,6 +78,7 @@ export function UpcomingBookingsList({
           ))}
         </div>
       )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }

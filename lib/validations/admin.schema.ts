@@ -10,5 +10,4 @@ export const updateGlobalRoleSchema = z.object({
   globalRole: z.enum(["USER", "SUPER_ADMIN"]),
 })
 
-export type AdminListQuery = z.infer<typeof adminListQuerySchema>
 export type UpdateGlobalRoleInput = z.infer<typeof updateGlobalRoleSchema>

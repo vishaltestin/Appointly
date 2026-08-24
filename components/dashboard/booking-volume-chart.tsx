@@ -10,6 +10,13 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
   CHART_COLORS,
   chartAxisTick,
   chartTooltipStyle,
@@ -24,9 +31,12 @@ export function BookingVolumeChart({ data }: { data: DataPoint[] }) {
   const maxCount = Math.max(...data.map((d) => d.count), 1)
 
   return (
-    <div className="rounded-xl border bg-card p-5">
-      <h2 className="mb-4 text-sm font-semibold">Bookings — Last 30 days</h2>
-      <div className="h-64">
+    <Card>
+      <CardHeader>
+        <CardTitle>Booking volume</CardTitle>
+        <CardDescription>Bookings created over the last 30 days</CardDescription>
+      </CardHeader>
+      <CardContent className="h-64">
         {data.every((d) => d.count === 0) ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             No bookings in the last 30 days yet.
@@ -71,7 +81,7 @@ export function BookingVolumeChart({ data }: { data: DataPoint[] }) {
             </BarChart>
           </ResponsiveContainer>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }

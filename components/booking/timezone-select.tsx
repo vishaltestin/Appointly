@@ -24,7 +24,7 @@ export function TimezoneSelect({
         if (next) onChange(next)
       }}
     >
-      <SelectTrigger className="w-full sm:w-64">
+      <SelectTrigger className="w-full sm:w-auto sm:min-w-44 sm:max-w-56">
         <Globe className="mr-2 h-4 w-4 text-muted-foreground" />
         <SelectValue />
       </SelectTrigger>

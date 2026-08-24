@@ -5,11 +5,15 @@ import { Check, ChevronsUpDown, Plus } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { SidebarMenuButton, useSidebar } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { RoleBadge } from "@/components/shared/role-badge"
 import { getInitials } from "@/lib/utils"
 import type { OrgRole } from "@/generated/prisma/client"
 
@@ -29,46 +33,70 @@ export function OrgSwitcher({
   currentSlug: string
 }) {
   const router = useRouter()
+  const { isMobile } = useSidebar()
   const current = organizations.find((o) => o.slug === currentSlug)
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex w-full items-center justify-between rounded-md p-2 text-left hover:bg-muted">
-        <span className="flex items-center gap-2 overflow-hidden">
-          <Avatar className="h-7 w-7 rounded-md">
-            <AvatarImage src={current?.logo ?? undefined} />
-            <AvatarFallback className="rounded-md text-xs">
-              {getInitials(current?.name)}
-            </AvatarFallback>
-          </Avatar>
-          <span className="truncate text-sm font-medium">{current?.name}</span>
+      <DropdownMenuTrigger
+        render={
+          <SidebarMenuButton
+            size="lg"
+            className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground"
+          />
+        }
+      >
+        <Avatar className="size-8 rounded-lg">
+          <AvatarImage src={current?.logo ?? undefined} />
+          <AvatarFallback className="rounded-lg bg-primary/10 text-xs font-semibold text-primary dark:bg-primary/20">
+            {getInitials(current?.name)}
+          </AvatarFallback>
+        </Avatar>
+        <span className="grid flex-1 text-left text-sm leading-tight">
+          <span className="truncate font-semibold">{current?.name}</span>
+          <span className="truncate text-xs text-muted-foreground">
+            {current?.role === "OWNER"
+              ? "Owner"
+              : current?.role === "ADMIN"
+                ? "Admin"
+                : "Member"}
+          </span>
         </span>
-        <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64">
-        {organizations.map((org) => (
-          <DropdownMenuItem
-            key={org.id}
-            className="flex items-center justify-between"
-            onClick={() => router.push(`/app/${org.slug}/dashboard`)}
-          >
-            <span className="flex items-center gap-2 overflow-hidden">
-              <Avatar className="h-6 w-6 rounded-md">
+      <DropdownMenuContent
+        align="start"
+        side={isMobile ? "bottom" : "right"}
+        sideOffset={4}
+        className="w-(--anchor-width) min-w-64"
+      >
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+          {organizations.map((org) => (
+            <DropdownMenuItem
+              key={org.id}
+              className="flex items-center gap-2"
+              onClick={() => router.push(`/app/${org.slug}/dashboard`)}
+            >
+              <Avatar className="size-6 rounded-md">
                 <AvatarImage src={org.logo ?? undefined} />
                 <AvatarFallback className="rounded-md text-[10px]">
                   {getInitials(org.name)}
                 </AvatarFallback>
               </Avatar>
-              <span className="truncate text-sm">{org.name}</span>
-            </span>
-            {org.slug === currentSlug && (
-              <Check className="h-4 w-4 text-primary" />
-            )}
-          </DropdownMenuItem>
-        ))}
+              <span className="min-w-0 flex-1 truncate text-sm">{org.name}</span>
+              <RoleBadge role={org.role} className="text-[10px]" />
+              {org.slug === currentSlug && (
+                <Check className="size-4 shrink-0 text-primary" />
+              )}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => router.push("/app/new")}>
-          <Plus className="mr-2 h-4 w-4" />
+          <span className="flex size-5 items-center justify-center rounded-md border border-dashed">
+            <Plus className="size-3.5" />
+          </span>
           Create workspace
         </DropdownMenuItem>
       </DropdownMenuContent>

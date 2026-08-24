@@ -2,6 +2,9 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,10 +29,25 @@ export function DeleteOrgDialog({
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [confirmText, setConfirmText] = useState("")
   const [isPending, startTransition] = useTransition()
 
-  function handleDelete() {
+  const confirmSchema = z.object({
+    confirm: z.literal(orgName, { error: `Type "${orgName}" to confirm.` }),
+  })
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<{ confirm: string }>({
+    resolver: zodResolver(confirmSchema),
+    defaultValues: { confirm: "" },
+  })
+
+  const confirmText = watch("confirm")
+
+  function onSubmit() {
     startTransition(async () => {
       await deleteOrganizationAdmin(orgId)
       router.push("/admin/organizations")
@@ -46,32 +64,40 @@ export function DeleteOrgDialog({
         }
       />
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Delete {orgName}?</DialogTitle>
-          <DialogDescription>
-            This permanently deletes the workspace, its members, and all
-            associated data. Type{" "}
-            <span className="font-semibold">{orgName}</span> to confirm.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="confirm-org">Workspace name</Label>
-          <Input
-            id="confirm-org"
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-          />
-        </div>
-        <DialogFooter>
-          <Button
-            variant="destructive"
-            disabled={confirmText !== orgName || isPending}
-            onClick={handleDelete}
-          >
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Delete permanently
-          </Button>
-        </DialogFooter>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Delete {orgName}?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes the workspace, its members, and all
+              associated data. Type{" "}
+              <span className="font-semibold">{orgName}</span> to confirm.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="confirm-org">Workspace name</Label>
+            <Input
+              id="confirm-org"
+              aria-invalid={!!errors.confirm}
+              autoComplete="off"
+              {...register("confirm")}
+            />
+            {errors.confirm && (
+              <p className="text-sm text-destructive">
+                {errors.confirm.message}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="submit"
+              variant="destructive"
+              disabled={confirmText !== orgName || isPending}
+            >
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete permanently
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

@@ -1,12 +1,17 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useTransition } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { toast } from "sonner"
+import { updateCustomerNotesSchema } from "@/lib/validations/customer.schema"
 import { updateCustomerNotes } from "@/actions/customer.actions"
+
+type NotesInput = { notes?: string | undefined }
 
 export function CustomerNotesEditor({
   orgSlug,
@@ -17,59 +22,52 @@ export function CustomerNotesEditor({
   customerId: string
   initialNotes: string | null
 }) {
-  const [notes, setNotes] = useState(initialNotes ?? "")
   const [isPending, startTransition] = useTransition()
-  const [success, setSuccess] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
-  const hasChanges = notes !== (initialNotes ?? "")
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isDirty },
+  } = useForm<NotesInput>({
+    resolver: zodResolver(updateCustomerNotesSchema),
+    defaultValues: { notes: initialNotes ?? "" },
+  })
 
-  function handleSave() {
-    setError(null)
-    setSuccess(null)
+  function onSubmit(values: NotesInput) {
     startTransition(async () => {
       const res = await updateCustomerNotes(orgSlug, customerId, {
-        notes: notes || undefined,
+        notes: values.notes?.trim() ? values.notes : undefined,
       })
       if (res?.error) {
-        setError(res.error)
+        setError("root.serverError", { message: res.error })
         return
       }
-      setSuccess(res?.success ?? "Saved.")
+      toast.success(res?.success ?? "Notes saved.")
     })
   }
 
   return (
-    <div className="space-y-3">
-      <Label htmlFor="notes">Notes</Label>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
       <Textarea
         id="notes"
         rows={4}
         placeholder="Internal notes about this customer (not visible to them)…"
-        value={notes}
-        onChange={(e) => {
-          setNotes(e.target.value)
-          setSuccess(null)
-        }}
+        aria-invalid={!!errors.notes}
+        {...register("notes")}
       />
-      {error && (
+      {errors.root?.serverError && (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{errors.root.serverError.message}</AlertDescription>
         </Alert>
       )}
-      {success && (
-        <Alert>
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
+      {errors.notes && (
+        <p className="text-sm text-destructive">{errors.notes.message}</p>
       )}
-      <Button
-        size="sm"
-        disabled={isPending || !hasChanges}
-        onClick={handleSave}
-      >
+      <Button type="submit" size="sm" disabled={isPending || !isDirty}>
         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Save notes
       </Button>
-    </div>
+    </form>
   )
 }

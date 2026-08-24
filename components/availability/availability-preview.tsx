@@ -74,9 +74,9 @@ export function AvailabilityPreview({
         </div>
       )}
       <p className="mt-3 text-xs text-muted-foreground">
-        Shown using a 30-minute default duration. Doesn&apos;t yet account for
-        real bookings — that connects automatically once the booking module
-        ships.
+        Computed from working hours, overrides and buffers at a fixed
+        30-minute duration. Existing bookings still block their own slots
+        when attendees book.
       </p>
     </div>
   )

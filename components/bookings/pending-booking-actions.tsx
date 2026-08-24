@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Check, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -13,6 +15,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  cancelBookingSchema,
+  type CancelBookingInput,
+} from "@/lib/validations/booking-management.schema"
 import {
   approveBooking,
   declineBooking,
@@ -30,29 +36,37 @@ export function PendingBookingActions({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [declineOpen, setDeclineOpen] = useState(false)
-  const [reason, setReason] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [error, setApproveError] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm<CancelBookingInput>({
+    resolver: zodResolver(cancelBookingSchema),
+    defaultValues: { reason: "" },
+  })
 
   function handleApprove() {
-    setError(null)
+    setApproveError(null)
     startTransition(async () => {
       const res = await approveBooking(orgSlug, bookingId)
       if (res?.error) {
-        setError(res.error)
+        setApproveError(res.error)
         return
       }
       router.refresh()
     })
   }
 
-  function handleDecline() {
-    setError(null)
+  function onDecline(values: CancelBookingInput) {
     startTransition(async () => {
       const res = await declineBooking(orgSlug, bookingId, {
-        reason: reason || undefined,
+        reason: values.reason?.trim() ? values.reason.trim() : undefined,
       })
       if (res?.error) {
-        setError(res.error)
+        setError("root.serverError", { message: res.error })
         return
       }
       setDeclineOpen(false)
@@ -86,28 +100,38 @@ export function PendingBookingActions({
 
       <Dialog open={declineOpen} onOpenChange={setDeclineOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Decline this booking request?</DialogTitle>
-            <DialogDescription>
-              The attendee will be notified.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            placeholder="Reason (optional)"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={3}
-          />
-          <DialogFooter>
-            <Button
-              variant="destructive"
-              disabled={isPending}
-              onClick={handleDecline}
-            >
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Decline
-            </Button>
-          </DialogFooter>
+          <form onSubmit={handleSubmit(onDecline)} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Decline this booking request?</DialogTitle>
+              <DialogDescription>
+                The attendee will be notified.
+              </DialogDescription>
+            </DialogHeader>
+            {errors.root?.serverError && (
+              <p className="text-sm text-destructive">
+                {errors.root.serverError.message}
+              </p>
+            )}
+            <div>
+              <Textarea
+                placeholder="Reason (optional)"
+                rows={3}
+                aria-invalid={!!errors.reason}
+                {...register("reason")}
+              />
+              {errors.reason && (
+                <p className="mt-1 text-sm text-destructive">
+                  {errors.reason.message}
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="submit" variant="destructive" disabled={isPending}>
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Decline
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>

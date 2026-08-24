@@ -11,6 +11,13 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
   CHART_COLORS,
   chartTooltipStyle,
   primaryWithOpacity,
@@ -31,8 +38,12 @@ export function BusiestTimes({ data }: { data: BusiestTimesData }) {
     }))
 
   return (
-    <div className="rounded-xl border bg-card p-5">
-      <h2 className="mb-4 text-sm font-semibold">Busiest times</h2>
+    <Card>
+      <CardHeader>
+        <CardTitle>Busiest times</CardTitle>
+        <CardDescription>When bookings concentrate</CardDescription>
+      </CardHeader>
+      <CardContent>
       {totalBookings === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
           Not enough booking data yet.
@@ -136,6 +147,7 @@ export function BusiestTimes({ data }: { data: BusiestTimesData }) {
           )}
         </div>
       )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }

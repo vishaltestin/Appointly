@@ -1,5 +1,6 @@
 import { db } from "@/lib/db"
 import { requireOrgMembership } from "@/lib/session"
+import { permissions } from "@/lib/permissions"
 import { BookingTabs } from "@/components/bookings/booking-tabs"
 import { BookingList } from "@/components/bookings/booking-list"
 import { PendingBookingList } from "@/components/bookings/pending-booking-list"
@@ -15,20 +16,34 @@ export default async function BookingsPage({
   const { tab = "upcoming" } = await searchParams
   const membership = await requireOrgMembership(orgSlug)
 
+  // OWNER/ADMIN see every booking in the workspace (per
+  // `canManageAllBookings`); a MEMBER sees only the ones they host. The
+  // change is deliberately list-wide: the same permission already gates
+  // booking-detail access and lifecycle actions, so widening the list alone
+  // would have produced rows the viewer couldn't open.
+  const canSeeAll = permissions.canManageAllBookings(membership.role)
+  const scope = canSeeAll
+    ? { organizationId: membership.organizationId }
+    : { hostMembershipId: membership.id }
+
   const pendingCount = await db.booking.count({
-    where: { hostMembershipId: membership.id, status: "PENDING" },
+    where: { ...scope, status: "PENDING" },
   })
 
   if (tab === "pending") {
     const pending = await db.booking.findMany({
-      where: { hostMembershipId: membership.id, status: "PENDING" },
+      where: { ...scope, status: "PENDING" },
       orderBy: { createdAt: "asc" },
     })
     return (
       <div className="space-y-6">
-        <Header />
+        <Header workspaceWide={canSeeAll} />
         <BookingTabs pendingCount={pendingCount} />
-        <PendingBookingList orgSlug={orgSlug} bookings={pending} />
+        <PendingBookingList
+          orgSlug={orgSlug}
+          bookings={pending}
+          showHost={canSeeAll}
+        />
       </div>
     )
   }
@@ -37,7 +52,7 @@ export default async function BookingsPage({
   const where =
     tab === "past"
       ? {
-          hostMembershipId: membership.id,
+          ...scope,
           status: "CONFIRMED" as const,
           endTime: { lt: now },
         }
@@ -47,12 +62,12 @@ export default async function BookingsPage({
           // tab meant for genuine cancellations. See booking detail page for
           // the reschedule trail.
           {
-            hostMembershipId: membership.id,
+            ...scope,
             status: "CANCELLED" as const,
             rescheduledTo: null,
           }
         : {
-            hostMembershipId: membership.id,
+            ...scope,
             status: "CONFIRMED" as const,
             endTime: { gte: now },
           }
@@ -65,19 +80,21 @@ export default async function BookingsPage({
 
   return (
     <div className="space-y-6">
-      <Header />
+      <Header workspaceWide={canSeeAll} />
       <BookingTabs pendingCount={pendingCount} />
-      <BookingList orgSlug={orgSlug} bookings={bookings} />
+      <BookingList orgSlug={orgSlug} bookings={bookings} showHost={canSeeAll} />
     </div>
   )
 }
 
-function Header() {
+function Header({ workspaceWide }: { workspaceWide: boolean }) {
   return (
     <div>
       <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
       <p className="text-sm text-muted-foreground">
-        Meetings booked through your event types.
+        {workspaceWide
+          ? "Every meeting booked across your workspace."
+          : "Meetings booked through your event types."}
       </p>
     </div>
   )

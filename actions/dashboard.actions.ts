@@ -79,15 +79,17 @@ export async function getBookingVolume(orgSlug: string) {
     where: {
       hostMembershipId: membership.id,
       status: { in: ["CONFIRMED", "PENDING"] },
-      startTime: { gte: thirtyDaysAgo },
+      // Bucketed by creation date, not startTime — a booking made today for
+      // next month is still booking activity that happened today.
+      createdAt: { gte: thirtyDaysAgo },
     },
-    select: { startTime: true },
+    select: { createdAt: true },
   })
 
   // Build a map of date → count
   const countByDate = new Map<string, number>()
   for (const b of bookings) {
-    const key = format(b.startTime, "yyyy-MM-dd")
+    const key = format(b.createdAt, "yyyy-MM-dd")
     countByDate.set(key, (countByDate.get(key) ?? 0) + 1)
   }
 

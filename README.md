@@ -4,6 +4,8 @@ Multi-tenant SaaS appointment scheduling — event types, public booking pages, 
 
 Built with Next.js (App Router), TypeScript, Prisma, MySQL, Auth.js v5, Tailwind, and shadcn/ui.
 
+**Documentation:** [User guide](docs/user-guide.md) · [Developer guide](docs/developer-guide.md) · [CLAUDE.md](CLAUDE.md) (AI-assistant context & conventions)
+
 ---
 
 ## Getting started

@@ -1,5 +1,4 @@
 import { AlertTriangle } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -8,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { SignOutButton } from "@/components/auth/sign-out-button"
-import Link from "next/link"
+import { LinkButton } from "@/components/shared/link-button"
 
 export default async function OrgSuspendedPage({
   searchParams,
@@ -32,9 +31,9 @@ export default async function OrgSuspendedPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
-          <Button variant="outline">
-            <Link href="/app">Switch workspace</Link>
-          </Button>
+          <LinkButton href="/app" variant="outline">
+            Switch workspace
+          </LinkButton>
           <SignOutButton variant="ghost" />
         </CardContent>
       </Card>

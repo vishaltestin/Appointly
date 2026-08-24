@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { toast } from "sonner"
 import {
   Select,
   SelectContent,
@@ -51,7 +52,6 @@ export function ScheduleEditor({ orgSlug, schedule }: ScheduleEditorProps) {
   const queryClient = useQueryClient()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
   const {
     register,
@@ -71,14 +71,13 @@ export function ScheduleEditor({ orgSlug, schedule }: ScheduleEditorProps) {
 
   function onSubmit(values: UpdateScheduleDetailsInput) {
     setError(null)
-    setSuccess(null)
     startTransition(async () => {
       const res = await updateScheduleDetails(orgSlug, schedule.id, values)
       if (res?.error) {
         setError(res.error)
         return
       }
-      setSuccess(res?.success ?? "Saved.")
+      toast.success(res?.success ?? "Saved.")
       // Timezone and buffer changes directly affect computed slots —
       // without this, the preview silently shows stale data until reload.
       queryClient.invalidateQueries({
@@ -96,11 +95,6 @@ export function ScheduleEditor({ orgSlug, schedule }: ScheduleEditorProps) {
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        {success && (
-          <Alert>
-            <AlertDescription>{success}</AlertDescription>
           </Alert>
         )}
 

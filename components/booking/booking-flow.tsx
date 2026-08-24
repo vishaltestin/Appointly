@@ -11,6 +11,8 @@ import {
   MapPin,
   FileText,
   ChevronLeft,
+  Globe,
+  CalendarCheck2,
 } from "lucide-react"
 import { BookingCalendar } from "@/components/booking/booking-calendar"
 import { TimeSlotList } from "@/components/booking/time-slot-list"
@@ -58,6 +60,13 @@ export function BookingFlow({ orgSlug, eventType, host }: Props) {
   const [slotRefreshKey, setSlotRefreshKey] = useState(0)
 
   const LocationIcon = LOCATION_ICONS[eventType.locationType]
+  const locationLabel =
+    eventType.locationType === "ONLINE_MEETING"
+      ? "Online meeting"
+      : eventType.locationType === "PHONE_CALL"
+        ? "Phone call"
+        : eventType.locationValue ||
+          (eventType.locationType === "IN_PERSON" ? "In-person" : "Custom")
 
   function handleSlotSelected(iso: string) {
     setSelectedSlot(iso)
@@ -75,71 +84,99 @@ export function BookingFlow({ orgSlug, eventType, host }: Props) {
   }
 
   return (
-    <div className="mx-auto grid max-w-4xl overflow-hidden rounded-xl border bg-card shadow-sm md:grid-cols-[280px_1fr]">
-      <div className="border-b p-6 md:border-r md:border-b-0">
-        <Avatar className="h-10 w-10">
+    <div className="mx-auto w-full max-w-4xl overflow-hidden rounded-2xl bg-card shadow-xl ring-1 ring-foreground/10 md:grid md:grid-cols-[300px_minmax(0,1fr)]">
+      {/* ── Left rail: host + event identity ─────────────────────────── */}
+      <div
+        className="relative border-b border-foreground/5 p-6 sm:p-8 md:border-r md:border-b-0"
+        style={{
+          backgroundImage: `linear-gradient(to bottom, color-mix(in oklch, ${eventType.color} 7%, transparent), transparent 65%)`,
+        }}
+      >
+        <Avatar className="size-14 shadow-md ring-4 ring-background">
           <AvatarImage src={host.image ?? undefined} />
-          <AvatarFallback>{getInitials(host.name)}</AvatarFallback>
+          <AvatarFallback
+            className="text-lg font-semibold"
+            style={{
+              backgroundColor: `color-mix(in oklch, ${eventType.color} 15%, transparent)`,
+              color: `color-mix(in oklch, ${eventType.color} 80%, currentColor)`,
+            }}
+          >
+            {getInitials(host.name)}
+          </AvatarFallback>
         </Avatar>
-        <p className="mt-3 text-sm text-muted-foreground">{host.name}</p>
-        <h1 className="mt-1 text-xl font-semibold">{eventType.title}</h1>
+        <p className="mt-4 text-sm text-muted-foreground">{host.name}</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+          {eventType.title}
+        </h1>
         {eventType.description && (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             {eventType.description}
           </p>
         )}
 
-        <div className="mt-4 space-y-2 text-sm">
-          <p className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
+        <ul className="mt-5 space-y-2.5 text-sm">
+          <li className="flex items-center gap-2.5">
+            <span className="flex size-7 items-center justify-center rounded-md bg-background ring-1 ring-foreground/10">
+              <Clock className="size-3.5 text-muted-foreground" />
+            </span>
             {eventType.durationMinutes} minutes
-          </p>
-          <p className="flex items-center gap-2">
-            <LocationIcon className="h-4 w-4 text-muted-foreground" />
-            {eventType.locationType === "ONLINE_MEETING"
-              ? "Online meeting"
-              : eventType.locationType === "PHONE_CALL"
-                ? "Phone call"
-                : eventType.locationValue ||
-                  (eventType.locationType === "IN_PERSON"
-                    ? "In-person"
-                    : "Custom")}
-          </p>
-        </div>
+          </li>
+          <li className="flex items-center gap-2.5">
+            <span className="flex size-7 items-center justify-center rounded-md bg-background ring-1 ring-foreground/10">
+              <LocationIcon className="size-3.5 text-muted-foreground" />
+            </span>
+            <span className="min-w-0 truncate">{locationLabel}</span>
+          </li>
+          <li className="flex items-center gap-2.5">
+            <span className="flex size-7 items-center justify-center rounded-md bg-background ring-1 ring-foreground/10">
+              <Globe className="size-3.5 text-muted-foreground" />
+            </span>
+            <span className="min-w-0 truncate">{timezone.replace(/_/g, " ")}</span>
+          </li>
+        </ul>
 
         {step === "details" && selectedSlot && (
-          <div className="mt-4 rounded-md bg-muted p-3 text-sm">
-            <p className="font-medium">
-              {format(new Date(selectedSlot), "EEEE, MMMM d")}
-            </p>
-            <p className="text-muted-foreground">
-              {new Intl.DateTimeFormat("en-US", {
-                hour: "numeric",
-                minute: "2-digit",
-                timeZone: timezone,
-              }).format(new Date(selectedSlot))}
-            </p>
+          <div className="mt-6 flex items-start gap-2.5 rounded-xl bg-background p-3.5 ring-1 ring-foreground/10">
+            <CalendarCheck2 className="mt-0.5 size-4 shrink-0 text-primary" />
+            <div className="text-sm">
+              <p className="font-medium">
+                {format(new Date(selectedSlot), "EEEE, MMMM d")}
+              </p>
+              <p className="text-muted-foreground">
+                {new Intl.DateTimeFormat("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                  timeZone: timezone,
+                }).format(new Date(selectedSlot))}
+              </p>
+            </div>
           </div>
         )}
       </div>
 
-      <div className="p-6">
+      {/* ── Right panel: pick a time, then details ───────────────────── */}
+      <div className="min-w-0 p-6 sm:p-8">
         {step === "pick" ? (
-          <div className="space-y-4">
-            <TimezoneSelect value={timezone} onChange={setTimezone} />
-            <div className="grid gap-6 sm:grid-cols-[auto_1fr]">
-              <BookingCalendar
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-              />
-              <div>
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-base font-semibold">Select a date &amp; time</h2>
+              <TimezoneSelect value={timezone} onChange={setTimezone} />
+            </div>
+            <div className="grid gap-x-8 gap-y-6 sm:grid-cols-[auto_minmax(0,1fr)]">
+              <div className="mx-auto sm:mx-0">
+                <BookingCalendar
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                />
+              </div>
+              <div className="min-w-0">
                 {selectedDate && (
                   <>
-                    <p className="mb-3 text-sm font-medium">
+                    <p className="mb-3 border-b pb-3 text-sm font-medium">
                       {format(selectedDate, "EEEE, MMMM d")}
                     </p>
                     <TimeSlotList
-                      key={slotRefreshKey}
+                      key={`${slotRefreshKey}-${selectedDate.toDateString()}`}
                       queryKey={[
                         "public-slots",
                         orgSlug,
@@ -160,11 +197,19 @@ export function BookingFlow({ orgSlug, eventType, host }: Props) {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <Button variant="ghost" size="sm" onClick={() => setStep("pick")}>
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Back
-            </Button>
+          <div className="space-y-5">
+            <div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="-ml-2"
+                onClick={() => setStep("pick")}
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" />
+                Back
+              </Button>
+              <h2 className="mt-1 text-base font-semibold">Enter your details</h2>
+            </div>
             <BookingForm
               orgSlug={orgSlug}
               eventSlug={eventType.slug}

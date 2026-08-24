@@ -20,7 +20,7 @@ export interface PlanLimits {
 export interface PlanDefinition {
   id: SubscriptionPlan
   name: string
-  /** Monthly price in USD. 0 = free. Display-only — nothing charges this. */
+  /** Monthly price in INR (₹). 0 = free. Display-only — nothing charges this. */
   price: number
   tagline: string
   limits: PlanLimits

@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -15,6 +17,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  cancelBookingSchema,
+  type CancelBookingInput,
+} from "@/lib/validations/booking-management.schema"
 import { cancelBookingAsHost } from "@/actions/booking-lifecycle.actions"
 
 export function CancelBookingDialog({
@@ -30,18 +36,25 @@ export function CancelBookingDialog({
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [reason, setReason] = useState("")
-  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  function handleCancel() {
-    setError(null)
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm<CancelBookingInput>({
+    resolver: zodResolver(cancelBookingSchema),
+    defaultValues: { reason: "" },
+  })
+
+  function onSubmit(values: CancelBookingInput) {
     startTransition(async () => {
       const res = await cancelBookingAsHost(orgSlug, bookingId, {
-        reason: reason || undefined,
+        reason: values.reason?.trim() ? values.reason.trim() : undefined,
       })
       if (res?.error) {
-        setError(res.error)
+        setError("root.serverError", { message: res.error })
         return
       }
       setOpen(false)
@@ -59,34 +72,41 @@ export function CancelBookingDialog({
         }
       />
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Cancel this booking?</DialogTitle>
-          <DialogDescription>
-            The attendee will be notified immediately. This cannot be undone.
-          </DialogDescription>
-        </DialogHeader>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <div className="space-y-2">
-          <Label htmlFor="reason">
-            Reason (optional, shared with attendee)
-          </Label>
-          <Textarea
-            id="reason"
-            rows={3}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
-        </div>
-        <DialogFooter>
-          <Button
-            variant="destructive"
-            disabled={isPending}
-            onClick={handleCancel}
-          >
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Cancel booking
-          </Button>
-        </DialogFooter>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Cancel this booking?</DialogTitle>
+            <DialogDescription>
+              The attendee will be notified immediately. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {errors.root?.serverError && (
+            <p className="text-sm text-destructive">
+              {errors.root.serverError.message}
+            </p>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="reason">
+              Reason (optional, shared with attendee)
+            </Label>
+            <Textarea
+              id="reason"
+              rows={3}
+              aria-invalid={!!errors.reason}
+              {...register("reason")}
+            />
+            {errors.reason && (
+              <p className="text-sm text-destructive">
+                {errors.reason.message}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="submit" variant="destructive" disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm cancellation
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

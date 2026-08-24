@@ -6,9 +6,10 @@ import { adminPlanListQuerySchema } from "@/lib/validations/billing.schema"
 import { StatCard } from "@/components/admin/stat-card"
 import { PlanFilterTabs } from "@/components/admin/plan-filter-tabs"
 import { PlansTable } from "@/components/admin/plans-table"
-import { PaginationControls } from "@/components/admin/pagination-controls"
 
-const PAGE_SIZE = 10
+// The plan filter stays server-side; within it, the client table handles
+// search, sorting, pagination, and export. The query is only an upper bound.
+const MAX_ROWS = 250
 
 export default async function AdminPlansPage({
   searchParams,
@@ -17,7 +18,7 @@ export default async function AdminPlansPage({
 }) {
   await requireSuperAdmin()
   const raw = await searchParams
-  const { plan, page } = adminPlanListQuerySchema.parse(raw)
+  const { plan } = adminPlanListQuerySchema.parse(raw)
 
   const where = plan === "ALL" ? {} : { plan }
 
@@ -25,8 +26,7 @@ export default async function AdminPlansPage({
     db.organization.findMany({
       where,
       orderBy: [{ plan: "desc" }, { createdAt: "desc" }],
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      take: MAX_ROWS,
       include: {
         _count: { select: { memberships: true, eventTypes: true } },
       },
@@ -66,14 +66,17 @@ export default async function AdminPlansPage({
           Plans &amp; Billing
         </h1>
         <p className="text-sm text-muted-foreground">
-          Manually move workspaces between plans. Payment is collected offline.
+          Manually move workspaces between plans. Payment is collected
+          offline.
+          {total > rows.length &&
+            ` Showing the ${rows.length} most recent of ${total} on this filter.`}
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
           label="Indicative MRR"
-          value={`$${indicativeMrr.toLocaleString()}`}
+          value={`₹${indicativeMrr.toLocaleString("en-IN")}`}
           icon={TrendingUp}
           hint="Based on recorded plans, not collected payments"
         />
@@ -88,13 +91,7 @@ export default async function AdminPlansPage({
 
       <PlanFilterTabs counts={{ ALL: totalOrgs, ...countByPlan }} />
 
-      <div className="rounded-xl border bg-card">
-        <PlansTable organizations={rows} />
-        <PaginationControls
-          page={page}
-          totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
-        />
-      </div>
+      <PlansTable organizations={rows} />
     </div>
   )
 }

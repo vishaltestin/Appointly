@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import {
   eventTypeDetailsSchema,
   type EventTypeDetailsInput,
@@ -53,7 +54,6 @@ export function EventTypeDetailsForm({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
   const {
     register,
@@ -70,28 +70,25 @@ export function EventTypeDetailsForm({
 
   function onSubmit(values: EventTypeDetailsInput) {
     setError(null)
-    setSuccess(null)
     startTransition(async () => {
       const res = await updateEventTypeDetails(orgSlug, eventTypeId, values)
       if (res?.error) {
         setError(res.error)
         return
       }
-      setSuccess(res?.success ?? "Saved.")
+      toast.success(res?.success ?? "Saved.")
       router.refresh()
     })
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-5">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="grid w-full gap-x-6 gap-y-6 lg:grid-cols-2"
+    >
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="lg:col-span-2">
           <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      {success && (
-        <Alert>
-          <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
 
@@ -106,7 +103,7 @@ export function EventTypeDetailsForm({
       <div className="space-y-2">
         <Label htmlFor="slug">Booking link</Label>
         <div className="flex items-center rounded-md border focus-within:ring-1 focus-within:ring-ring">
-          <span className="pl-3 text-sm text-muted-foreground">
+          <span className="shrink-0 pl-3 text-sm whitespace-nowrap text-muted-foreground">
             /book/{orgSlug}/
           </span>
           <Input
@@ -120,12 +117,12 @@ export function EventTypeDetailsForm({
         )}
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2 lg:col-span-2">
         <Label htmlFor="description">Description</Label>
         <Textarea id="description" rows={3} {...register("description")} />
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2 lg:col-span-2">
         <Label>Duration</Label>
         <div className="flex flex-wrap items-center gap-2">
           {DURATION_PRESETS.map((preset) => (
@@ -158,7 +155,7 @@ export function EventTypeDetailsForm({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2">
         <div className="space-y-2">
           <Label>Location type</Label>
           <Select
@@ -173,7 +170,11 @@ export function EventTypeDetailsForm({
             }}
           >
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue>
+                {(v) =>
+                  LOCATION_LABELS[v as keyof typeof LOCATION_LABELS] ?? v
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {Object.entries(LOCATION_LABELS).map(([value, label]) => (
@@ -204,10 +205,12 @@ export function EventTypeDetailsForm({
         />
       </div>
 
-      <Button type="submit" disabled={isPending}>
-        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Save details
-      </Button>
+      <div className="flex items-end justify-start lg:justify-end">
+        <Button type="submit" disabled={isPending}>
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save details
+        </Button>
+      </div>
     </form>
   )
 }

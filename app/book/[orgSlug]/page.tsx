@@ -1,9 +1,17 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { Clock } from "lucide-react"
+import { ArrowRight, CalendarClock, Clock } from "lucide-react"
 import { db } from "@/lib/db"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getInitials } from "@/lib/utils"
+import { EmptyState } from "@/components/shared/empty-state"
+
+const LOCATION_LABELS: Record<string, string> = {
+  IN_PERSON: "In person",
+  PHONE_CALL: "Phone call",
+  ONLINE_MEETING: "Online meeting",
+  CUSTOM: "Custom",
+}
 
 export default async function OrgBookingProfilePage({
   params,
@@ -28,46 +36,71 @@ export default async function OrgBookingProfilePage({
   })
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-16">
-      <div className="mb-8 text-center">
-        <Avatar className="mx-auto h-16 w-16">
-          <AvatarImage src={organization.logo ?? undefined} />
-          <AvatarFallback className="text-lg">
-            {getInitials(organization.name)}
-          </AvatarFallback>
-        </Avatar>
-        <h1 className="mt-4 text-2xl font-semibold">{organization.name}</h1>
+    <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-12 sm:py-16">
+      <div className="mb-10 flex flex-col items-center text-center">
+        <span className="rounded-[1.25rem] bg-card p-2 shadow-lg shadow-foreground/5 ring-1 ring-foreground/10">
+          <Avatar className="size-16 rounded-2xl">
+            <AvatarImage src={organization.logo ?? undefined} />
+            <AvatarFallback className="rounded-2xl bg-primary/10 text-lg font-semibold text-primary dark:bg-primary/20">
+              {getInitials(organization.name)}
+            </AvatarFallback>
+          </Avatar>
+        </span>
+        <h1 className="mt-5 text-3xl font-semibold tracking-tight">
+          {organization.name}
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Choose a meeting below — you&apos;ll see real-time availability in
+          your own time zone.
+        </p>
       </div>
 
-      <div className="space-y-3">
-        {eventTypes.length === 0 ? (
-          <p className="text-center text-sm text-muted-foreground">
-            No bookable event types available right now.
-          </p>
-        ) : (
-          eventTypes.map((et) => (
+      {eventTypes.length === 0 ? (
+        <EmptyState
+          icon={CalendarClock}
+          title="Nothing to book right now"
+          description="This workspace doesn't have any bookable event types at the moment."
+        />
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {eventTypes.map((et) => (
             <Link
               key={et.id}
               href={`/book/${orgSlug}/${et.slug}`}
-              className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:border-primary"
+              className="group relative flex flex-col gap-3 overflow-hidden rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:ring-1 hover:ring-foreground/15"
             >
-              <div className="flex items-center gap-3">
-                <span
-                  className="h-8 w-1.5 rounded-full"
-                  style={{ backgroundColor: et.color }}
-                />
-                <div>
-                  <p className="font-medium">{et.title}</p>
-                  <p className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Clock className="h-3.5 w-3.5" />
-                    {et.durationMinutes} min · with {et.membership.user.name}
-                  </p>
-                </div>
+              <span
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-1"
+                style={{ backgroundColor: et.color }}
+              />
+              <div className="flex items-start justify-between gap-2 pt-1">
+                <h2 className="font-semibold tracking-tight">{et.title}</h2>
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition-all duration-200 group-hover:bg-primary group-hover:text-primary-foreground">
+                  <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-px" />
+                </span>
+              </div>
+              {et.description ? (
+                <p className="line-clamp-2 text-sm text-muted-foreground">
+                  {et.description}
+                </p>
+              ) : null}
+              <div className="mt-auto flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                  <Clock className="size-3.5 shrink-0" />
+                  {et.durationMinutes} min
+                </span>
+                <span className="text-foreground/25">·</span>
+                <span className="whitespace-nowrap">
+                  {LOCATION_LABELS[et.locationType] ?? "Meeting"}
+                </span>
+                <span className="text-foreground/25">·</span>
+                <span className="truncate">{et.membership.user.name}</span>
               </div>
             </Link>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

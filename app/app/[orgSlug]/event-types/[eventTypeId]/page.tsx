@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { requireOrgMembership } from "@/lib/session"
 import { EventTypeEditor } from "@/components/event-types/event-type-editor"
 import { CopyLinkButton } from "@/components/event-types/copy-link-button"
+import { Button } from "@/components/ui/button"
 
 export default async function EventTypeEditorPage({
   params,
@@ -43,15 +44,15 @@ export default async function EventTypeEditorPage({
           </h1>
           <div className="flex gap-2">
             <CopyLinkButton url={publicUrl} />
-            <a
-              href={publicUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<a href={publicUrl} target="_blank" rel="noreferrer" />}
             >
-              <ExternalLink className="h-3.5 w-3.5" />
+              <ExternalLink className="mr-2 h-4 w-4" />
               Preview
-            </a>
+            </Button>
           </div>
         </div>
       </div>

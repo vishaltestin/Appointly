@@ -1,6 +1,26 @@
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
 import { db } from "@/lib/db"
 import { BookingFlow } from "@/components/booking/booking-flow"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ orgSlug: string; eventSlug: string }>
+}): Promise<Metadata> {
+  const { orgSlug, eventSlug } = await params
+  const org = await db.organization.findUnique({
+    where: { slug: orgSlug },
+    select: { id: true, name: true, status: true },
+  })
+  if (!org || org.status === "SUSPENDED") return {}
+  const eventType = await db.eventType.findUnique({
+    where: { organizationId_slug: { organizationId: org.id, slug: eventSlug } },
+    select: { title: true },
+  })
+  if (!eventType) return {}
+  return { title: `${eventType.title} · ${org.name}` }
+}
 
 export default async function EventBookingPage({
   params,
@@ -32,7 +52,7 @@ export default async function EventBookingPage({
     notFound()
 
   return (
-    <div className="min-h-screen bg-muted/30 px-4 py-10">
+    <div className="flex flex-1 items-start justify-center px-4 py-10 sm:items-center sm:py-14">
       <BookingFlow
         orgSlug={orgSlug}
         eventType={{

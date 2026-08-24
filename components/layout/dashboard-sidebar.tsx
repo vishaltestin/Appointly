@@ -9,11 +9,26 @@ import {
   Users,
   Settings,
   Link as LinkIcon,
+  ExternalLink,
+  ArrowUpRight,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  SidebarSeparator,
+} from "@/components/ui/sidebar"
 import { OrgSwitcher } from "@/components/organization/org-switcher"
-import { Badge } from "@/components/ui/badge"
 import { PlanBadge } from "@/components/shared/plan-badge"
+import { permissions } from "@/lib/permissions"
 import type { OrgRole, SubscriptionPlan } from "@/generated/prisma/client"
 
 interface SidebarOrg {
@@ -35,98 +50,153 @@ export function DashboardSidebar({
 }) {
   const pathname = usePathname()
 
-  const nav = [
+  // The org switcher payload already carries this user's role per org, so
+  // derive the current one from it instead of threading another prop. Role
+  // drives which nav entries exist at all: a MEMBER only ever runs their
+  // own calendar, so workspace administration (Settings, plan page) is
+  // hidden from them entirely — matching the server-side gate in
+  // settings/layout.tsx.
+  const currentRole =
+    organizations.find((org) => org.slug === currentSlug)?.role ?? "MEMBER"
+  const canAdminister = permissions.canEditOrganization(currentRole)
+
+  const mainNav = [
     {
       label: "Dashboard",
       href: `/app/${currentSlug}/dashboard`,
-      match: `/app/${currentSlug}/dashboard`,
       icon: LayoutDashboard,
-      soon: false,
     },
     {
       label: "Bookings",
       href: `/app/${currentSlug}/bookings`,
-      match: `/app/${currentSlug}/bookings`,
       icon: CalendarClock,
-      soon: false,
     },
     {
       label: "Event types",
       href: `/app/${currentSlug}/event-types`,
-      match: `/app/${currentSlug}/event-types`,
       icon: LinkIcon,
-      soon: false,
     },
     {
       label: "Availability",
       href: `/app/${currentSlug}/availability`,
-      match: `/app/${currentSlug}/availability`,
       icon: Clock,
-      soon: false,
     },
     {
       label: "Customers",
       href: `/app/${currentSlug}/customers`,
-      match: `/app/${currentSlug}/customers`,
       icon: Users,
-      soon: false,
     },
+  ]
+
+  const workspaceNav = [
+    ...(canAdminister
+      ? [
+          {
+            label: "Settings",
+            href: `/app/${currentSlug}/settings/general`,
+            match: `/app/${currentSlug}/settings`,
+            icon: Settings,
+          },
+        ]
+      : []),
     {
-      label: "Settings",
-      href: `/app/${currentSlug}/settings/general`,
-      match: `/app/${currentSlug}/settings`,
-      icon: Settings,
-      soon: false,
+      label: "Booking page",
+      href: `/book/${currentSlug}`,
+      match: null,
+      icon: ExternalLink,
+      external: true,
     },
   ]
 
   return (
-    <aside className="flex w-64 flex-col border-r bg-background">
-      <div className="space-y-2 border-b p-4">
-        <OrgSwitcher organizations={organizations} currentSlug={currentSlug} />
-        <Link
-          href={`/app/${currentSlug}/settings/plan`}
-          className="flex items-center gap-2 px-2 text-xs text-muted-foreground hover:text-foreground"
-        >
-          <PlanBadge plan={plan} />
-          <span>plan</span>
-        </Link>
-      </div>
-      <nav className="flex-1 space-y-1 p-3">
-        {nav.map((item) => {
-          const active = !item.soon && pathname.startsWith(item.match)
-          const content = (
-            <div
-              className={cn(
-                "flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                item.soon
-                  ? "cursor-not-allowed text-muted-foreground/50"
-                  : active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <span className="flex items-center gap-2.5">
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </span>
-              {item.soon && (
-                <Badge variant="outline" className="text-[10px] font-normal">
-                  Soon
-                </Badge>
-              )}
-            </div>
-          )
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <OrgSwitcher
+              organizations={organizations}
+              currentSlug={currentSlug}
+            />
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
 
-          return item.soon ? (
-            <div key={item.href}>{content}</div>
-          ) : (
-            <Link key={item.href} href={item.href}>
-              {content}
-            </Link>
-          )
-        })}
-      </nav>
-    </aside>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Schedule</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {mainNav.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    isActive={pathname.startsWith(item.href)}
+                    tooltip={item.label}
+                    render={
+                      <Link href={item.href}>
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </Link>
+                    }
+                  />
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {workspaceNav.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    isActive={item.match ? pathname.startsWith(item.match) : false}
+                    tooltip={item.label}
+                    render={
+                      <Link
+                        href={item.href}
+                        {...("external" in item && item.external
+                          ? { target: "_blank", rel: "noreferrer" }
+                          : {})}
+                      >
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </Link>
+                    }
+                  />
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      {canAdminister && (
+        <>
+          <SidebarSeparator />
+          <SidebarFooter>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Manage plan"
+                  render={
+                    <Link href={`/app/${currentSlug}/settings/plan`}>
+                      <ArrowUpRight />
+                      <span className="flex items-center gap-2">
+                        <PlanBadge plan={plan} />
+                        <span className="text-sidebar-foreground/70">plan</span>
+                      </span>
+                    </Link>
+                  }
+                />
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
+        </>
+      )}
+
+      <SidebarRail />
+    </Sidebar>
   )
 }

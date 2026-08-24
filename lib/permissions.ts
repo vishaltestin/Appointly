@@ -17,9 +17,8 @@ export const permissions = {
   canRemoveMember: (role: OrgRole) => hasMinimumRole(role, "ADMIN"),
   canChangeRoles: (role: OrgRole) => role === "OWNER",
   canManageBilling: (role: OrgRole) => role === "OWNER",
-  // New: lets ADMIN/OWNER view & manage bookings hosted by any teammate,
-  // not just their own. (Scope note: this applies to direct booking-detail
-  // access only — the bookings *list* page intentionally still shows each
-  // member their own hosted bookings, to avoid scope creep this module.)
+  // Lets ADMIN/OWNER view & manage bookings hosted by any teammate, not
+  // just their own. Applies end-to-end: the bookings list (org-wide scope),
+  // booking-detail access, and lifecycle actions all honour it.
   canManageAllBookings: (role: OrgRole) => hasMinimumRole(role, "ADMIN"),
 };

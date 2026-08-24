@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { toast } from "sonner"
 import {
   Select,
   SelectContent,
@@ -27,17 +28,19 @@ interface OrgSettingsFormProps {
   orgSlug: string
   defaultValues: UpdateOrgInput
   canEdit: boolean
+  /** Public app origin, e.g. "https://appointly.example.com" — no trailing slash. */
+  appUrl: string
 }
 
 export function OrgSettingsForm({
   orgSlug,
   defaultValues,
   canEdit,
+  appUrl,
 }: OrgSettingsFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
   const {
     register,
@@ -52,14 +55,13 @@ export function OrgSettingsForm({
 
   function onSubmit(values: UpdateOrgInput) {
     setError(null)
-    setSuccess(null)
     startTransition(async () => {
       const res = await updateOrganization(orgSlug, values)
       if (res?.error) {
         setError(res.error)
         return
       }
-      setSuccess(res?.success ?? "Saved.")
+      toast.success(res?.success ?? "Saved.")
       if (res?.slug && res.slug !== orgSlug) {
         router.push(`/app/${res.slug}/settings/general`)
       } else {
@@ -69,15 +71,13 @@ export function OrgSettingsForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-lg space-y-5">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="grid w-full gap-x-6 gap-y-6 lg:grid-cols-2"
+    >
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="lg:col-span-2">
           <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      {success && (
-        <Alert>
-          <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
 
@@ -92,8 +92,8 @@ export function OrgSettingsForm({
       <div className="space-y-2">
         <Label htmlFor="slug">Workspace URL</Label>
         <div className="flex items-center rounded-md border focus-within:ring-1 focus-within:ring-ring">
-          <span className="pl-3 text-sm text-muted-foreground">
-            appointly.com/app/
+          <span className="max-w-[55%] truncate pl-3 text-sm text-muted-foreground">
+            {appUrl}/app/
           </span>
           <Input
             id="slug"
@@ -129,11 +129,15 @@ export function OrgSettingsForm({
         </Select>
       </div>
 
-      {canEdit && (
-        <Button type="submit" disabled={isPending}>
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save changes
-        </Button>
+      {canEdit ? (
+        <div className="flex items-end justify-start lg:justify-end">
+          <Button type="submit" disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save changes
+          </Button>
+        </div>
+      ) : (
+        <div className="hidden lg:block" />
       )}
     </form>
   )

@@ -12,12 +12,28 @@ const STYLES: Record<Status, string> = {
     "bg-zinc-100 text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-400",
 }
 
-export function BookingStatusBadge({ status }: { status: Status }) {
+const DOTS: Record<Status, string> = {
+  PENDING: "bg-amber-500",
+  CONFIRMED: "bg-emerald-500",
+  CANCELLED: "bg-zinc-400",
+}
+
+export function BookingStatusBadge({
+  status,
+  className,
+}: {
+  status: Status
+  className?: string
+}) {
   return (
     <Badge
       variant="secondary"
-      className={cn("font-medium capitalize", STYLES[status])}
+      className={cn("font-medium capitalize", STYLES[status], className)}
     >
+      <span
+        aria-hidden="true"
+        className={cn("size-1.5 rounded-full", DOTS[status])}
+      />
       {status.toLowerCase()}
     </Badge>
   )

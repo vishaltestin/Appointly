@@ -3,6 +3,7 @@ import { requireOrgMembership } from "@/lib/session"
 import { permissions } from "@/lib/permissions"
 import { canAddTeamMember } from "@/lib/usage"
 import { MemberList } from "@/components/team/member-list"
+import { RoleLegend } from "@/components/team/role-legend"
 import { UpgradeNotice } from "@/components/billing/upgrade-notice"
 import { PendingInvitations } from "@/components/team/pending-invitations"
 import { InviteMemberDialog } from "@/components/team/invite-member-dialog"
@@ -56,6 +57,8 @@ export default async function MembersSettingsPage({
       {canInvite && !seatCheck.allowed && (
         <UpgradeNotice orgSlug={orgSlug} message={seatCheck.error!} />
       )}
+
+      <RoleLegend />
 
       <MemberList
         orgSlug={orgSlug}

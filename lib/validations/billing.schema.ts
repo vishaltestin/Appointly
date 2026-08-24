@@ -14,4 +14,3 @@ export const adminPlanListQuerySchema = z.object({
 })
 
 export type ChangePlanInput = z.infer<typeof changePlanSchema>
-export type AdminPlanListQuery = z.infer<typeof adminPlanListQuerySchema>

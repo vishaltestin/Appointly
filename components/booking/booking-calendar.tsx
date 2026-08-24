@@ -16,7 +16,9 @@ export function BookingCalendar({
       selected={selected}
       onSelect={onSelect}
       disabled={{ before: startOfDay(new Date()) }}
-      className="rounded-lg border"
+      // Generous cell size + breathing room: this calendar is the primary
+      // picking surface on booking & reschedule screens, not a date input.
+      className="rounded-xl border bg-card p-3 [--cell-size:--spacing(9)]"
     />
   )
 }

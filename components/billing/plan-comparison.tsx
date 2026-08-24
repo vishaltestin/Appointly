@@ -39,7 +39,7 @@ export function PlanComparison({
                 "Free"
               ) : (
                 <>
-                  ${plan.price}
+                  ₹{plan.price}
                   <span className="text-sm font-normal text-muted-foreground">
                     /month
                   </span>
