@@ -26,6 +26,7 @@ export function LoginForm({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [phoneVerifyEmail, setPhoneVerifyEmail] = useState<string | null>(null)
 
   const {
     register,
@@ -35,9 +36,19 @@ export function LoginForm({
 
   function onSubmit(values: LoginInput) {
     setError(null)
+    setPhoneVerifyEmail(null)
     startTransition(async () => {
       const res = await signIn("credentials", { ...values, redirect: false })
       if (res?.error) {
+        // Thrown from authorize() when the account has a mobile number that
+        // hasn't passed the WhatsApp OTP step yet.
+        if (res.code === "phone_not_verified") {
+          setError(
+            "Please verify your mobile number before signing in."
+          )
+          setPhoneVerifyEmail(values.email)
+          return
+        }
         setError("Invalid email or password.")
         return
       }
@@ -58,7 +69,20 @@ export function LoginForm({
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {error && (
           <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              {error}
+              {phoneVerifyEmail && (
+                <>
+                  {" "}
+                  <a
+                    href={`/verify-phone?email=${encodeURIComponent(phoneVerifyEmail)}`}
+                    className="font-medium underline"
+                  >
+                    Verify now
+                  </a>
+                </>
+              )}
+            </AlertDescription>
           </Alert>
         )}
 

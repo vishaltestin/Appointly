@@ -74,6 +74,9 @@ model User {
   password      String?
   globalRole    GlobalRole @default(USER)
   timezone      String     @default("UTC")
+  phone         String?    // E.164-normalized mobile, OTP-verified at signup
+  phoneVerifiedAt DateTime?
+  otpChallenges OtpChallenge[]
 
   accounts    Account[]
   sessions    Session[]
@@ -87,6 +90,22 @@ model User {
   status          UserStatus   @default(ACTIVE)
 
   @@map("users")
+}
+
+model OtpChallenge {
+  id         String    @id @default(cuid())
+  userId     String
+  phone      String // E.164 target the code was sent to
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("otp_challenges")
 }
 
 model Account {

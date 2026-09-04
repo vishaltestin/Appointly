@@ -1,4 +1,4 @@
-import NextAuth from "next-auth"
+import NextAuth, { CredentialsSignin } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import Google from "next-auth/providers/google"
 import { PrismaAdapter } from "@auth/prisma-adapter"
@@ -11,6 +11,11 @@ import { bootstrapNewUserWorkspace } from "@/lib/workspace-bootstrap"
 const hasGoogleCredentials = Boolean(
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
 )
+
+/** Thrown when a credentials user with an unverified mobile tries to sign in. */
+export class PhoneNotVerifiedError extends CredentialsSignin {
+  code = "phone_not_verified"
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -83,6 +88,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const passwordsMatch = await bcrypt.compare(password, user.password)
         if (!passwordsMatch) return null
+
+        // Signup requires WhatsApp OTP verification of the mobile number.
+        // Accounts without a phone (Google signups, pre-OTP users, invited
+        // members) are intentionally not gated.
+        if (user.phone && !user.phoneVerifiedAt) throw new PhoneNotVerifiedError()
 
         return {
           id: user.id,

@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { GoogleAuthButton } from "@/components/auth/google-auth-button"
 import { AuthDivider } from "@/components/auth/auth-divider"
+import { PhoneOtpCard } from "@/components/auth/phone-otp-card"
 
 interface RegisterFormProps {
   defaultEmail?: string
@@ -36,6 +37,11 @@ export function RegisterForm({
   const [error, setError] = useState<string | null>(null)
   const [invalidInvite, setInvalidInvite] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
+  const [otpState, setOtpState] = useState<{
+    email: string
+    maskedPhone: string
+    devOtp?: string
+  } | null>(null)
 
   const {
     register,
@@ -52,17 +58,48 @@ export function RegisterForm({
     setSuccess(null)
     startTransition(async () => {
       const res = await registerUser(values, invitationToken)
-      if (res.error) {
+      if ("error" in res && res.error) {
         setError(res.error)
         setInvalidInvite(Boolean(res.invalidInvite))
         return
       }
-      setSuccess(res.success ?? "Account created.")
-      const loginUrl = callbackUrl
-        ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
-        : "/login"
-      setTimeout(() => router.push(loginUrl), 1200)
+      if ("otpRequired" in res && res.otpRequired) {
+        setOtpState({
+          email: res.email,
+          maskedPhone: res.maskedPhone,
+          devOtp: res.devOtp,
+        })
+      }
     })
+  }
+
+  function onVerified() {
+    setSuccess("Mobile verified — your account is ready.")
+    const loginUrl = callbackUrl
+      ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+      : "/login"
+    setTimeout(() => router.push(loginUrl), 1200)
+  }
+
+  if (otpState) {
+    return (
+      <div className="space-y-4">
+        {success && (
+          <Alert>
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
+        )}
+        {!success && (
+          <PhoneOtpCard
+            email={otpState.email}
+            maskedPhone={otpState.maskedPhone}
+            initialDevOtp={otpState.devOtp}
+            onVerified={onVerified}
+            onBack={() => setOtpState(null)}
+          />
+        )}
+      </div>
+    )
   }
 
   return (
@@ -90,11 +127,6 @@ export function RegisterForm({
             </AlertDescription>
           </Alert>
         )}
-        {success && (
-          <Alert>
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        )}
 
         <div className="space-y-2">
           <Label htmlFor="name">Full name</Label>
@@ -102,6 +134,23 @@ export function RegisterForm({
           {errors.name && (
             <p className="text-sm text-destructive">{errors.name.message}</p>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="phone">Mobile number (WhatsApp)</Label>
+          <Input
+            id="phone"
+            type="tel"
+            autoComplete="tel"
+            placeholder="+91 98765 43210"
+            {...register("phone")}
+          />
+          {errors.phone && (
+            <p className="text-sm text-destructive">{errors.phone.message}</p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            We&apos;ll send a one-time verification code to this number.
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -138,7 +187,7 @@ export function RegisterForm({
             id="confirmPassword"
             type="password"
             placeholder="••••••••"
-            {...register("confirmPassword")}
+          {...register("confirmPassword")}
           />
           {errors.confirmPassword && (
             <p className="text-sm text-destructive">

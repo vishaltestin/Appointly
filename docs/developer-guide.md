@@ -51,6 +51,24 @@ All of them are documented inline in [`.env.example`](../.env.example).
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Google OAuth; if unset the button is hidden entirely |
 | `CRON_SECRET` | — | Bearer token guarding `POST /api/cron/send-reminders` |
 | `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` | — | Seed credentials for `npm run db:seed` |
+| `WACRM_BASE_URL` | — | FueledInbox (WhatsApp CRM) API base, e.g. `https://your-wacrm-domain.example.com` — no trailing slash |
+| `WACRM_API_KEY` | — | FueledInbox Bearer key (`wacrm_live_…`) used for `POST /api/v1/messages` |
+| `WACRM_OTP_TEMPLATE_ID` | — | Template id of the approved `verification_code` template; `{{1}}` receives the 6-digit code |
+| `ALLOW_DEV_OTP` | — | Local-only escape hatch: when `true` and the `WACRM_*` vars are unset, the signup OTP is logged/returned instead of sent. Never enable in production |
+
+### Phone OTP at signup
+
+New owner accounts created via `/register` must verify a WhatsApp OTP before
+they can sign in. Flow: `registerUser` normalizes the phone to E.164
+(`lib/phone.ts`), generates a 6-digit code, **sends it first**
+(`lib/whatsapp.ts` → FueledInbox `POST /api/v1/messages` with
+`template_params: [code]`), then stores a bcrypt hash in `otp_challenges`
+(10-minute TTL, 5 attempts, 60 s resend cooldown — `lib/otp.ts`). If the send
+fails the pending user row is deleted so the email never gets locked out.
+`verifyPhoneOtp` sets `users.phoneVerifiedAt`; the Auth.js `authorize()`
+refuses logins (`phone_not_verified`) until then. Passwordless/invited/Google
+accounts without a phone are not gated. The code is never stored in
+plaintext and is only delivered via WhatsApp (or the dev-mode UI hint).
 
 ## 4. Database workflow
 

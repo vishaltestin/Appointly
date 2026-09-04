@@ -600,7 +600,7 @@ function LandingFooter() {
         <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center">
           <p>© {new Date().getFullYear()} Appointly. All rights reserved.</p>
           <p className="flex items-center gap-1.5">
-            Built with Next.js, Prisma and shadcn/ui
+            Design & developed by DigitalFueled
           </p>
         </div>
       </div>

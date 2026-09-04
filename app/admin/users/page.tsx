@@ -31,6 +31,8 @@ export default async function AdminUsersPage({
     globalRole: user.globalRole,
     status: user.status,
     orgCount: user._count.memberships,
+    phone: user.phone,
+    phoneVerifiedAt: user.phoneVerifiedAt,
     createdAt: user.createdAt,
   }))
 

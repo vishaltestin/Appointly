@@ -18,6 +18,8 @@ export interface UserRow {
   globalRole: GlobalRole
   status: "ACTIVE" | "SUSPENDED"
   orgCount: number
+  phone: string | null
+  phoneVerifiedAt: Date | null
   createdAt: Date
 }
 
@@ -54,6 +56,23 @@ const columns: ColumnDef<UserRow>[] = [
     // on screen but keeps the CSV export complete.
     cell: () => null,
     enableSorting: false,
+  },
+  {
+    id: "phone",
+    accessorFn: (user) => user.phone ?? "",
+    header: "Mobile",
+    meta: { csvValue: (user) => user.phone ?? "" },
+    cell: ({ row }) =>
+      row.original.phone ? (
+        <span className="text-sm text-muted-foreground tabular-nums">
+          {row.original.phone}
+          {row.original.phoneVerifiedAt && (
+            <span title="WhatsApp verified"> ✓</span>
+          )}
+        </span>
+      ) : (
+        <span className="text-sm text-muted-foreground/60">—</span>
+      ),
   },
   {
     accessorKey: "orgCount",

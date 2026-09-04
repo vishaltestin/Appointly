@@ -1014,3 +1014,101 @@ collides with the hover background of the item below it.
   `fix:customer-counters` zero drift · build green.
 - Temp tooling removed (playwright, shot scripts, local screenshots).
   Nothing committed — working tree only.
+
+## Round 6 — Pulled user's GitHub changes (logo refinements)
+
+User committed the workspace state to GitHub themselves (`ca3b24c` + `5263211`)
+and asked to integrate. Diffed all 131 pushed files against the working tree
+by content hash: identical except 4 files the user deliberately changed.
+
+### Their changes (kept)
+
+- `public/brand-mark.png` — replaced the 218px black-background crop with a
+  2000×2000 transparent-background DF monogram (much crisper, no black box).
+- `components/layout/brand.tsx` — mark tile `size-7` → `size-10`.
+- `app/(auth)/layout.tsx` — auth panel tile `bg-white/15` → `bg-white` so the
+  transparent monogram sits on a white rounded tile on the royal panel.
+- `package-lock.json` — trivial npm metadata (`devOptional` → `dev`).
+
+### Integration & follow-ups
+
+- `git reset --hard origin/main` (safe: every other working-tree file was
+  hash-identical to a pushed blob — nothing lost).
+- Regenerated `app/favicon.ico` from the new transparent monogram on a white
+  tile (remote still had the old black-box favicon) — the only local delta
+  vs origin/main, uncommitted.
+- Rebuilt + verified visually: landing nav, login (light/dark), admin
+  sidebar, not-found; zero console/page errors. Gates: tsc 0 · eslint 0/13 ·
+  build green.
+
+## Round 7 — Signup phone number + WhatsApp OTP verification
+
+Owner signup now collects a mobile number and gates the account behind a
+WhatsApp OTP (FueledInbox / WACRM API) before first login. Scope per user:
+**owner self-signup only** — booking attendees, invited members and Google
+OAuth are untouched.
+
+### Schema
+
+- `users.phone` (`String?`) + `users.phoneVerifiedAt` (`DateTime?`).
+- New `otp_challenges` table (`OtpChallenge` model): `userId`, `phone`,
+  `codeHash` (bcrypt — codes never stored in plaintext), `attempts`
+  (max 5), `expiresAt` (10 min), `consumedAt`. Migration
+  `20260903183141_signup_phone_otp`; `prisma generate` rerun.
+
+### New modules
+
+- `lib/phone.ts` (client-safe) — `normalizePhone`: E.164 output; bare
+  10-digit Indian mobile (starts 6–9) → `+91`; strips leading `0`/`00`,
+  spaces/dashes. `maskPhone` for UI ("+91 ••••• 5670").
+- `lib/otp.ts` (server-only) — `generateOtpCode` (crypto 6-digit),
+  `createOtpChallenge` (replaces prior un-consumed challenges),
+  `verifyOtpCode` (expiry + attempt limits with friendly messages, deletes
+  exhausted/expired rows), `resendCooldownSeconds` (60 s).
+  `lib/otp-ui.ts` holds the client-safe cooldown constant.
+- `lib/whatsapp.ts` (server-only) — `sendOtpWhatsApp` →
+  `POST ${WACRM_BASE_URL}/api/v1/messages` with
+  `{phone, template_id: WACRM_OTP_TEMPLATE_ID, template_params: [code]}`,
+  Bearer `WACRM_API_KEY`, 10 s timeout, `no-store`. If the three `WACRM_*`
+  vars are unset and `ALLOW_DEV_OTP=true`, the code is logged and returned
+  (`devOtp`) so the flow is fully testable without credentials; otherwise a
+  config error is returned (never a silent fake-success).
+
+### Flow changes
+
+- `registerUser` (`actions/auth.actions.ts`): normalizes + stores phone,
+  **sends the OTP before persisting the challenge**, and deletes the just-
+  created user on send failure (email never locked out). Workspace bootstrap
+  unchanged. Returns `{otpRequired, email, maskedPhone, devOtp?}`.
+- New actions `verifyPhoneOtp({email, code})` → sets `phoneVerifiedAt`;
+  `resendPhoneOtp(email)` → 60 s cooldown, sends before storing.
+- `auth.ts`: `PhoneNotVerifiedError` (`code: "phone_not_verified"`) thrown
+  from `authorize()` when `user.phone && !user.phoneVerifiedAt`. Accounts
+  with no phone (Google, pre-existing, invited) are not gated.
+- UI: shared `components/auth/phone-otp-card.tsx` (+ client wrapper),
+  `app/(auth)/verify-phone/page.tsx`; `register-form.tsx` gains the phone
+  field (client-side validated) and swaps to the OTP card as step 2;
+  `login-form.tsx` catches `phone_not_verified` and links to
+  `/verify-phone?email=…`.
+- Admin users table: sortable **Mobile** column (number + `✓` when
+  verified, `—` otherwise) with CSV export support.
+- Footer (`app/page.tsx`): "Built with Next.js, Prisma and shadcn/ui" →
+  "Design & developed by DigitalFueled" (plain text, per user).
+- `.env.example` documents `WACRM_BASE_URL` / `WACRM_API_KEY` /
+  `WACRM_OTP_TEMPLATE_ID` / `ALLOW_DEV_OTP`. Demo seed gives the three Acme
+  users verified phones.
+
+### Verification
+
+- Full Playwright E2E on a production build: invalid phone rejected
+  client-side; signup → OTP step with masked number; DB shows unverified
+  phone + challenge row; wrong code → "Incorrect code. N attempts left."
+  (attempts increment); login blocked pre-verify with "Verify now" escape;
+  `/verify-phone` completes; `phoneVerifiedAt` set; login succeeds; admin
+  Mobile column + `✓`; footer text present.
+- Gates: `tsc` 0 errors · `eslint` 0 errors / 13 pre-existing warnings ·
+  production build green · counters zero drift after reseed.
+- **Real WhatsApp delivery is code-complete but untested end-to-end** — the
+  user must supply `WACRM_BASE_URL` / `WACRM_API_KEY` /
+  `WACRM_OTP_TEMPLATE_ID`. Local preview runs with `ALLOW_DEV_OTP=true`
+  (untracked `.env`), which surfaces the code in the UI instead of sending.

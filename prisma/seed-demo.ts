@@ -78,10 +78,11 @@ async function main() {
 
   // ------------------------------------------------------- Acme Studio team
   console.log("◆ Creating Acme Studio (3 members, PRO)…")
+  const verifiedAt = new Date(Date.now() - 30 * 86400_000)
   const [amara, dev, riya] = await Promise.all([
-    prisma.user.create({ data: { name: "Amara Kapoor", email: "amara@example.com", password, timezone: "Asia/Kolkata" } }),
-    prisma.user.create({ data: { name: "Dev Malhotra", email: "dev@example.com", password, timezone: "Asia/Kolkata" } }),
-    prisma.user.create({ data: { name: "Riya Nair", email: "riya@example.com", password, timezone: "Asia/Kolkata" } }),
+    prisma.user.create({ data: { name: "Amara Kapoor", email: "amara@example.com", password, timezone: "Asia/Kolkata", phone: "+919876543210", phoneVerifiedAt: verifiedAt } }),
+    prisma.user.create({ data: { name: "Dev Malhotra", email: "dev@example.com", password, timezone: "Asia/Kolkata", phone: "+919812345678", phoneVerifiedAt: verifiedAt } }),
+    prisma.user.create({ data: { name: "Riya Nair", email: "riya@example.com", password, timezone: "Asia/Kolkata", phone: "+919998887776", phoneVerifiedAt: verifiedAt } }),
   ])
 
   const org = await prisma.organization.create({
