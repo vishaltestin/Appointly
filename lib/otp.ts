@@ -1,18 +1,24 @@
 import "server-only"
 import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
+import type { PendingRegistration } from "@/generated/prisma/client"
 
 /**
- * Signup phone-OTP challenges.
+ * Signup phone-OTP state, stored on `pending_registrations`.
  *
- * One active challenge per user (a new request replaces the old one).
+ * The account does NOT exist until the OTP verifies — registration only
+ * creates a PendingRegistration row holding everything needed to finish
+ * signup (name, email, phone, hashed password, invite token). One row per
+ * email; a new request for the same email replaces the previous state.
  * Codes are 6 digits, bcrypt-hashed at rest, valid for 10 minutes, and
  * limited to 5 verify attempts before a fresh code is required.
  */
 
-export const OTP_TTL_MINUTES = 10
-export const OTP_MAX_ATTEMPTS = 5
-export const OTP_RESEND_COOLDOWN_SECONDS = 60
+// Internal tuning constants. The client-visible copy of the resend cooldown
+// lives in lib/otp-ui.ts (client-safe) — keep the two in sync.
+const OTP_TTL_MINUTES = 10
+const OTP_MAX_ATTEMPTS = 5
+const OTP_RESEND_COOLDOWN_SECONDS = 60
 
 export function generateOtpCode(): string {
   // 6 digits, cryptographically random, no modulo bias concerns here
@@ -20,57 +26,95 @@ export function generateOtpCode(): string {
   return String(buf[0] % 1_000_000).padStart(6, "0")
 }
 
-export async function createOtpChallenge(
-  userId: string,
-  phone: string,
-  code: string
-) {
-  const codeHash = await bcrypt.hash(code, 6) // cheap: codes are short-lived
-  await db.$transaction([
-    db.otpChallenge.deleteMany({ where: { userId } }),
-    db.otpChallenge.create({
-      data: {
-        userId,
-        phone,
-        codeHash,
-        expiresAt: new Date(Date.now() + OTP_TTL_MINUTES * 60_000),
-      },
-    }),
-  ])
+export async function getPendingRegistration(email: string) {
+  return db.pendingRegistration.findUnique({ where: { email } })
 }
 
-export type VerifyOtpResult =
-  | { ok: true }
+export async function hashOtpCode(code: string): Promise<string> {
+  // Cheap cost factor: codes are short-lived and attempt-limited.
+  return bcrypt.hash(code, 6)
+}
+
+/** Replace any previous pending signup for this email with fresh OTP state. */
+export async function upsertPendingRegistration(params: {
+  email: string
+  name: string
+  phone: string
+  passwordHash: string
+  codeHash: string
+  invitationToken?: string
+}) {
+  const { codeHash, email, name, phone, passwordHash, invitationToken } = params
+  const fresh = {
+    name,
+    phone,
+    passwordHash,
+    codeHash,
+    invitationToken: invitationToken ?? null,
+    attempts: 0,
+    expiresAt: new Date(Date.now() + OTP_TTL_MINUTES * 60_000),
+    lastSentAt: new Date(),
+  }
+  await db.pendingRegistration.upsert({
+    where: { email },
+    create: { email, ...fresh },
+    update: fresh,
+  })
+}
+
+/** Store a freshly-sent replacement code on an existing pending signup. */
+export async function refreshPendingCode(
+  id: string,
+  codeHash: string
+): Promise<void> {
+  await db.pendingRegistration.update({
+    where: { id },
+    data: {
+      codeHash,
+      attempts: 0,
+      expiresAt: new Date(Date.now() + OTP_TTL_MINUTES * 60_000),
+      lastSentAt: new Date(),
+    },
+  })
+}
+
+export type VerifyPendingResult =
+  | { ok: true; pending: PendingRegistration }
   | { ok: false; error: string; exhausted?: boolean }
 
-export async function verifyOtpCode(
-  userId: string,
+/**
+ * Checks the code against the pending signup's hash. On success the row is
+ * intentionally left in place — the caller deletes it in the same
+ * transaction that creates the user, so a failed user-creation can never
+ * strand a verified-but-accountless signup.
+ */
+export async function verifyPendingCode(
+  email: string,
   code: string
-): Promise<VerifyOtpResult> {
-  const challenge = await db.otpChallenge.findFirst({
-    where: { userId, consumedAt: null },
-    orderBy: { createdAt: "desc" },
-  })
-  if (!challenge)
-    return { ok: false, error: "No verification code was requested. Please request a new one." }
-  if (challenge.expiresAt < new Date()) {
-    await db.otpChallenge.delete({ where: { id: challenge.id } })
-    return { ok: false, error: "That code has expired. Please request a new one.", exhausted: true }
-  }
-  if (challenge.attempts >= OTP_MAX_ATTEMPTS) {
-    await db.otpChallenge.delete({ where: { id: challenge.id } })
+): Promise<VerifyPendingResult> {
+  const pending = await getPendingRegistration(email)
+  if (!pending)
+    return {
+      ok: false,
+      error: "No pending signup found for this email. Please register again.",
+    }
+  if (pending.expiresAt < new Date())
+    return {
+      ok: false,
+      error: "That code has expired. Please request a new one.",
+    }
+  if (pending.attempts >= OTP_MAX_ATTEMPTS)
     return {
       ok: false,
       error: "Too many wrong attempts. Please request a new code.",
       exhausted: true,
     }
-  }
 
-  const matches = await bcrypt.compare(code, challenge.codeHash)
+  const matches = await bcrypt.compare(code, pending.codeHash)
   if (!matches) {
-    const remaining = OTP_MAX_ATTEMPTS - (challenge.attempts + 1)
-    await db.otpChallenge.update({
-      where: { id: challenge.id },
+    const remaining = OTP_MAX_ATTEMPTS - (pending.attempts + 1)
+    await db.pendingRegistration.update({
+      where: { id: pending.id },
       data: { attempts: { increment: 1 } },
     })
     return {
@@ -83,21 +127,11 @@ export async function verifyOtpCode(
     }
   }
 
-  await db.otpChallenge.update({
-    where: { id: challenge.id },
-    data: { consumedAt: new Date() },
-  })
-  return { ok: true }
+  return { ok: true, pending }
 }
 
 /** Seconds until a resend is allowed again (0 = allowed now). */
-export async function resendCooldownSeconds(userId: string): Promise<number> {
-  const latest = await db.otpChallenge.findFirst({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    select: { createdAt: true },
-  })
-  if (!latest) return 0
-  const elapsed = (Date.now() - latest.createdAt.getTime()) / 1000
+export function resendCooldownSeconds(lastSentAt: Date): number {
+  const elapsed = (Date.now() - lastSentAt.getTime()) / 1000
   return Math.max(0, Math.ceil(OTP_RESEND_COOLDOWN_SECONDS - elapsed))
 }

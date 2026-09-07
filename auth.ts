@@ -12,7 +12,10 @@ const hasGoogleCredentials = Boolean(
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
 )
 
-/** Thrown when a credentials user with an unverified mobile tries to sign in. */
+/**
+ * Thrown when a credentials login matches a pending signup (account not yet
+ * created) or a legacy user whose mobile never passed the WhatsApp OTP step.
+ */
 export class PhoneNotVerifiedError extends CredentialsSignin {
   code = "phone_not_verified"
 }
@@ -83,7 +86,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const { email, password } = parsed.data
         const user = await db.user.findUnique({ where: { email } })
-        if (!user?.password) return null
+
+        if (!user) {
+          // No account yet — but they may have a pending signup that never
+          // passed the WhatsApp OTP step. If the password matches that
+          // pending signup, route them to verification instead of a plain
+          // "invalid credentials".
+          const pending = await db.pendingRegistration.findUnique({
+            where: { email },
+          })
+          if (pending) {
+            const matchesPending = await bcrypt.compare(
+              password,
+              pending.passwordHash
+            )
+            if (matchesPending) throw new PhoneNotVerifiedError()
+          }
+          return null
+        }
+
+        if (!user.password) return null
         if (user.status === "SUSPENDED") return null
 
         const passwordsMatch = await bcrypt.compare(password, user.password)

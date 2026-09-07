@@ -59,6 +59,15 @@ export function RegisterForm({
     startTransition(async () => {
       const res = await registerUser(values, invitationToken)
       if ("error" in res && res.error) {
+        // A code was sent moments ago — skip resending and go straight to
+        // the OTP step (resend is available there after the cooldown).
+        if (res.otpPending) {
+          setOtpState({
+            email: res.otpPending.email,
+            maskedPhone: res.otpPending.maskedPhone,
+          })
+          return
+        }
         setError(res.error)
         setInvalidInvite(Boolean(res.invalidInvite))
         return

@@ -76,7 +76,6 @@ model User {
   timezone      String     @default("UTC")
   phone         String?    // E.164-normalized mobile, OTP-verified at signup
   phoneVerifiedAt DateTime?
-  otpChallenges OtpChallenge[]
 
   accounts    Account[]
   sessions    Session[]
@@ -92,20 +91,30 @@ model User {
   @@map("users")
 }
 
-model OtpChallenge {
-  id         String    @id @default(cuid())
-  userId     String
-  phone      String // E.164 target the code was sent to
-  codeHash   String
-  attempts   Int       @default(0)
-  expiresAt  DateTime
-  consumedAt DateTime?
-  createdAt  DateTime  @default(now())
+/**
+ * A signup that has passed the form checks but not yet the WhatsApp OTP.
+ * The User row (and workspace) is created ONLY when the OTP verifies —
+ * until then everything needed to finish signup lives here, keyed by email.
+ * Codes are bcrypt-hashed at rest, valid for 10 minutes, limited to
+ * 5 verify attempts; `lastSentAt` drives the 60 s resend cooldown.
+ */
+model PendingRegistration {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String
+  phone           String // E.164 target the code was sent to
+  passwordHash    String
+  codeHash        String
+  attempts        Int       @default(0)
+  expiresAt       DateTime
+  lastSentAt      DateTime  @default(now())
+  // Invite link the signup arrived through — honored when the workspace is
+  // bootstrapped at verify time (deferred from register time).
+  invitationToken String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("otp_challenges")
+  @@map("pending_registrations")
 }
 
 model Account {

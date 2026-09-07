@@ -1041,20 +1041,24 @@ by content hash: identical except 4 files the user deliberately changed.
   sidebar, not-found; zero console/page errors. Gates: tsc 0 · eslint 0/13 ·
   build green.
 
-## Round 7 — Signup phone number + WhatsApp OTP verification
+## Round 7 — Signup phone number + WhatsApp OTP (deferred account creation)
 
 Owner signup now collects a mobile number and gates the account behind a
-WhatsApp OTP (FueledInbox / WACRM API) before first login. Scope per user:
-**owner self-signup only** — booking attendees, invited members and Google
-OAuth are untouched.
+WhatsApp OTP (FueledInbox / WACRM API). Scope per user: **owner self-signup
+only** — booking attendees, invited members and OAuth are untouched.
+**Account rows are created only when the OTP verifies** (user request,
+second iteration): until then the entire signup lives as a
+`pending_registrations` row. Google sign-in is commented out for now.
 
 ### Schema
 
 - `users.phone` (`String?`) + `users.phoneVerifiedAt` (`DateTime?`).
-- New `otp_challenges` table (`OtpChallenge` model): `userId`, `phone`,
-  `codeHash` (bcrypt — codes never stored in plaintext), `attempts`
-  (max 5), `expiresAt` (10 min), `consumedAt`. Migration
-  `20260903183141_signup_phone_otp`; `prisma generate` rerun.
+- New `pending_registrations` table (`PendingRegistration` model), one row
+  per email (`@unique`): `name`, `phone`, `passwordHash` (bcrypt, cost 10),
+  `codeHash` (bcrypt, cost 6 — codes never stored in plaintext), `attempts`
+  (max 5), `expiresAt` (10 min), `lastSentAt` (60 s resend cooldown),
+  `invitationToken` (invite link honored at verify time). Migration
+  `20260904170410_signup_phone_otp`; `prisma generate` rerun.
 
 ### New modules
 
@@ -1062,10 +1066,12 @@ OAuth are untouched.
   10-digit Indian mobile (starts 6–9) → `+91`; strips leading `0`/`00`,
   spaces/dashes. `maskPhone` for UI ("+91 ••••• 5670").
 - `lib/otp.ts` (server-only) — `generateOtpCode` (crypto 6-digit),
-  `createOtpChallenge` (replaces prior un-consumed challenges),
-  `verifyOtpCode` (expiry + attempt limits with friendly messages, deletes
-  exhausted/expired rows), `resendCooldownSeconds` (60 s).
-  `lib/otp-ui.ts` holds the client-safe cooldown constant.
+  `hashOtpCode`, `upsertPendingRegistration` (replaces prior pending state
+  per email), `refreshPendingCode` (resend), `verifyPendingCode` (expiry +
+  attempt limits, friendly messages; leaves the row in place on success so
+  the caller can delete it in the user-creation transaction),
+  `resendCooldownSeconds` (from `lastSentAt`). Tuning constants are
+  module-private; `lib/otp-ui.ts` holds the client-safe cooldown copy.
 - `lib/whatsapp.ts` (server-only) — `sendOtpWhatsApp` →
   `POST ${WACRM_BASE_URL}/api/v1/messages` with
   `{phone, template_id: WACRM_OTP_TEMPLATE_ID, template_params: [code]}`,
@@ -1076,20 +1082,36 @@ OAuth are untouched.
 
 ### Flow changes
 
-- `registerUser` (`actions/auth.actions.ts`): normalizes + stores phone,
-  **sends the OTP before persisting the challenge**, and deletes the just-
-  created user on send failure (email never locked out). Workspace bootstrap
-  unchanged. Returns `{otpRequired, email, maskedPhone, devOtp?}`.
-- New actions `verifyPhoneOtp({email, code})` → sets `phoneVerifiedAt`;
-  `resendPhoneOtp(email)` → 60 s cooldown, sends before storing.
-- `auth.ts`: `PhoneNotVerifiedError` (`code: "phone_not_verified"`) thrown
-  from `authorize()` when `user.phone && !user.phoneVerifiedAt`. Accounts
-  with no phone (Google, pre-existing, invited) are not gated.
+- `registerUser` (`actions/auth.actions.ts`): validates, normalizes phone,
+  rejects already-registered emails, validates the invite token if present,
+  **sends the OTP before persisting anything** (a failed send leaves zero
+  trace — email never locked out), then upserts the pending row with
+  hashed password/code + invite token. If a re-register arrives inside the
+  60 s cooldown it returns an `otpPending` marker instead of resending —
+  the form jumps straight to the OTP step.
+- `verifyPhoneOtp`: no user → verify code → **create User (with
+  `phoneVerifiedAt` set) + delete pending in one transaction** → bootstrap
+  workspace honoring the stored invite token. Idempotent: existing user →
+  "already verified" success; concurrent verify races collapse via P2002.
+- `resendPhoneOtp`: errors for verified emails / missing pendings, enforces
+  the cooldown, sends first, then refreshes the pending row.
+- `auth.ts` `authorize()`: when no User exists, a password-matching pending
+  signup throws `PhoneNotVerifiedError` → the login form shows "verify your
+  mobile" with a "Verify now" link instead of a misleading "invalid
+  credentials". (The `user.phone && !phoneVerifiedAt` gate stays as
+  defense-in-depth; normal signups can no longer hit it.)
 - UI: shared `components/auth/phone-otp-card.tsx` (+ client wrapper),
-  `app/(auth)/verify-phone/page.tsx`; `register-form.tsx` gains the phone
-  field (client-side validated) and swaps to the OTP card as step 2;
-  `login-form.tsx` catches `phone_not_verified` and links to
-  `/verify-phone?email=…`.
+  `app/(auth)/verify-phone/page.tsx` now reads `pending_registrations`
+  (no pending → `/register`; user exists → "Already verified");
+  `register-form.tsx` handles the `otpPending` marker; the phone field sits
+  between name and email with helper text.
+- **Google sign-in commented out** (user request): `GOOGLE_SIGN_IN_ENABLED =
+  false` gates `googleEnabled` on `app/(auth)/login/page.tsx` and
+  `app/(auth)/register/page.tsx` — flip to re-enable. The OAuth provider
+  config in `auth.ts` is untouched; verified rendering-proof with dummy
+  creds (provider registers, button still hidden). Note: Google-only
+  accounts (no password) can't sign in while disabled — none exist in
+  current data.
 - Admin users table: sortable **Mobile** column (number + `✓` when
   verified, `—` otherwise) with CSV export support.
 - Footer (`app/page.tsx`): "Built with Next.js, Prisma and shadcn/ui" →
@@ -1100,14 +1122,24 @@ OAuth are untouched.
 
 ### Verification
 
-- Full Playwright E2E on a production build: invalid phone rejected
-  client-side; signup → OTP step with masked number; DB shows unverified
-  phone + challenge row; wrong code → "Incorrect code. N attempts left."
-  (attempts increment); login blocked pre-verify with "Verify now" escape;
-  `/verify-phone` completes; `phoneVerifiedAt` set; login succeeds; admin
-  Mobile column + `✓`; footer text present.
+- Playwright E2E on a production build, 30 checks passing, zero console
+  errors: footer text; Google button absent on /login + /register; register
+  → OTP step with masked phone + dev hint; **DB proof: zero rows in
+  `users` pre-verify, one `pending_registrations` row (E.164 phone)**;
+  login pre-verify → "verify your mobile" + "Verify now" → /verify-phone;
+  wrong code → "4 attempts left" + attempts=1; re-register inside cooldown
+  → straight to OTP step, still exactly one pending row; correct code →
+  user row created with verified phone, pending deleted, personal workspace
+  bootstrapped (OWNER); login → /app; /verify-phone → "Already verified";
+  verified email can't re-register; **invite flow E2E**: token stored on
+  pending row, verify → membership in acme-studio (MEMBER), invitation
+  ACCEPTED, no personal workspace, member login lands in acme-studio;
+  mobile 390 dark-mode register + OTP screenshots clean.
 - Gates: `tsc` 0 errors · `eslint` 0 errors / 13 pre-existing warnings ·
-  production build green · counters zero drift after reseed.
+  production build green · knip at baseline.
+- Sandbox restarted mid-round: recovered MariaDB/node_modules via
+  `devbox-setup.sh`, rebuilt. One box OOM-thrash when a build ran
+  concurrently with the chromium download — run them sequentially here.
 - **Real WhatsApp delivery is code-complete but untested end-to-end** — the
   user must supply `WACRM_BASE_URL` / `WACRM_API_KEY` /
   `WACRM_OTP_TEMPLATE_ID`. Local preview runs with `ALLOW_DEV_OTP=true`

@@ -1,9 +1,14 @@
 import Link from "next/link"
 import { RegisterForm } from "@/components/auth/register-form"
 
-const googleEnabled = Boolean(
-  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-)
+// Google sign-in is commented out for the time being (round 7 request).
+// To re-enable: flip this to `true` and set GOOGLE_CLIENT_ID /
+// GOOGLE_CLIENT_SECRET. The OAuth provider config in auth.ts is untouched.
+const GOOGLE_SIGN_IN_ENABLED = false
+
+const googleEnabled =
+  GOOGLE_SIGN_IN_ENABLED &&
+  Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
 
 export default async function RegisterPage({
   searchParams,

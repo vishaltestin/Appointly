@@ -1,6 +1,7 @@
 "use server"
 
 import bcrypt from "bcryptjs"
+import { Prisma } from "@/generated/prisma/client"
 import { db } from "@/lib/db"
 import { bootstrapNewUserWorkspace } from "@/lib/workspace-bootstrap"
 import {
@@ -11,15 +12,24 @@ import {
 } from "@/lib/validations/auth.schema"
 import { normalizePhone, maskPhone } from "@/lib/phone"
 import {
-  createOtpChallenge,
   generateOtpCode,
-  verifyOtpCode,
+  hashOtpCode,
+  getPendingRegistration,
+  upsertPendingRegistration,
+  refreshPendingCode,
+  verifyPendingCode,
   resendCooldownSeconds,
 } from "@/lib/otp"
 import { sendOtpWhatsApp } from "@/lib/whatsapp"
 
 export type RegisterResult =
-  | { error: string; invalidInvite?: boolean }
+  | {
+      error: string
+      invalidInvite?: boolean
+      /** A code was sent moments ago — the UI should jump straight to the
+       * OTP step instead of resending (60 s cooldown still active). */
+      otpPending?: { email: string; maskedPhone: string }
+    }
   | {
       success: string
       otpRequired: true
@@ -66,32 +76,44 @@ export async function registerUser(
     }
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10)
-  const user = await db.user.create({
-    data: { name, email, password: hashedPassword, phone },
-  })
+  // A code was literally just sent for this email — don't spam WhatsApp on
+  // every resubmit; point the UI at the OTP step (a resend is available
+  // there once the cooldown lapses).
+  const existingPending = await getPendingRegistration(email)
+  if (existingPending) {
+    const cooldown = resendCooldownSeconds(existingPending.lastSentAt)
+    if (cooldown > 0) {
+      return {
+        error: `We already sent a verification code to ${maskPhone(existingPending.phone)}. You can request a new one in ${cooldown}s.`,
+        otpPending: {
+          email,
+          maskedPhone: maskPhone(existingPending.phone),
+        },
+      }
+    }
+  }
 
-  // Send first, store the challenge only once delivery succeeded — otherwise
-  // a failed send would burn the signup and lock the email address.
+  // Nothing is stored before delivery succeeds: no user row, no pending
+  // row — a failed send can never burn or lock out the email address.
   const code = generateOtpCode()
   const sent = await sendOtpWhatsApp(phone, code)
-  if (!sent.ok) {
-    await db.user.delete({ where: { id: user.id } })
-    return { error: sent.error }
-  }
-  await createOtpChallenge(user.id, phone, code)
+  if (!sent.ok) return { error: sent.error }
 
-  const { joinedViaInvitation } = await bootstrapNewUserWorkspace({
-    userId: user.id,
+  const [passwordHash, codeHash] = await Promise.all([
+    bcrypt.hash(password, 10),
+    hashOtpCode(code),
+  ])
+  await upsertPendingRegistration({
     email,
     name,
-    preferredInvitationToken: invitationToken,
+    phone,
+    passwordHash,
+    codeHash,
+    invitationToken,
   })
 
   return {
-    success: joinedViaInvitation
-      ? "Account created. You've joined the workspace."
-      : "Account created.",
+    success: "Verification code sent.",
     otpRequired: true,
     email,
     maskedPhone: maskPhone(phone),
@@ -112,19 +134,58 @@ export async function verifyPhoneOtp(
   if (!parsed.success) return { error: "Enter the 6-digit code." }
 
   const email = parsed.data.email.toLowerCase()
-  const user = await db.user.findUnique({ where: { email } })
-  if (!user) return { error: "No account found for this email." }
-  if (user.phoneVerifiedAt)
-    return { success: "Your number is already verified. You can sign in." }
 
-  const result = await verifyOtpCode(user.id, parsed.data.code)
+  // Idempotent: if the account already exists (double-submit, or verified
+  // in another tab), just point them at sign-in.
+  const existingUser = await db.user.findUnique({
+    where: { email },
+    select: { id: true },
+  })
+  if (existingUser)
+    return { success: "Your account is already verified. You can sign in." }
+
+  const result = await verifyPendingCode(email, parsed.data.code)
   if (!result.ok) return { error: result.error, exhausted: result.exhausted }
 
-  await db.user.update({
-    where: { id: user.id },
-    data: { phoneVerifiedAt: new Date() },
+  const { pending } = result
+  let userId: string
+  try {
+    userId = await db.$transaction(async (tx) => {
+      // The account is born here — verified from its first moment.
+      const user = await tx.user.create({
+        data: {
+          name: pending.name,
+          email: pending.email,
+          password: pending.passwordHash,
+          phone: pending.phone,
+          phoneVerifiedAt: new Date(),
+        },
+      })
+      await tx.pendingRegistration.delete({ where: { id: pending.id } })
+      return user.id
+    })
+  } catch (err) {
+    // Someone else verified this email concurrently and won the race.
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      await db.pendingRegistration
+        .delete({ where: { id: pending.id } })
+        .catch(() => {})
+      return { success: "Your account is already verified. You can sign in." }
+    }
+    throw err
+  }
+
+  await bootstrapNewUserWorkspace({
+    userId,
+    email: pending.email,
+    name: pending.name,
+    preferredInvitationToken: pending.invitationToken ?? undefined,
   })
-  return { success: "Mobile number verified. You can sign in now." }
+
+  return { success: "Mobile number verified — your account is ready. You can sign in now." }
 }
 
 export type ResendOtpResult = {
@@ -138,12 +199,21 @@ export async function resendPhoneOtp(
   emailRaw: string
 ): Promise<ResendOtpResult> {
   const email = emailRaw.trim().toLowerCase()
-  const user = await db.user.findUnique({ where: { email } })
-  if (!user) return { error: "No account found for this email." }
-  if (user.phoneVerifiedAt) return { error: "This number is already verified." }
-  if (!user.phone) return { error: "No mobile number on file for this account." }
 
-  const cooldown = await resendCooldownSeconds(user.id)
+  const existingUser = await db.user.findUnique({
+    where: { email },
+    select: { id: true },
+  })
+  if (existingUser)
+    return { error: "This account is already verified. You can sign in." }
+
+  const pending = await getPendingRegistration(email)
+  if (!pending)
+    return {
+      error: "No pending signup found for this email. Please register first.",
+    }
+
+  const cooldown = resendCooldownSeconds(pending.lastSentAt)
   if (cooldown > 0)
     return {
       error: `Please wait ${cooldown}s before requesting a new code.`,
@@ -151,9 +221,9 @@ export async function resendPhoneOtp(
     }
 
   const code = generateOtpCode()
-  const sent = await sendOtpWhatsApp(user.phone, code)
+  const sent = await sendOtpWhatsApp(pending.phone, code)
   if (!sent.ok) return { error: sent.error }
-  await createOtpChallenge(user.id, user.phone, code)
+  await refreshPendingCode(pending.id, await hashOtpCode(code))
 
   return {
     success: "A new code is on its way to your WhatsApp.",
