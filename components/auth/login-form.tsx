@@ -91,7 +91,6 @@ export function LoginForm({
           <Input
             id="email"
             type="email"
-            placeholder="you@example.com"
             {...register("email")}
           />
           {errors.email && (
@@ -104,7 +103,6 @@ export function LoginForm({
           <Input
             id="password"
             type="password"
-            placeholder="••••••••"
             {...register("password")}
           />
           {errors.password && (

@@ -52,7 +52,7 @@ export function CustomerNotesEditor({
       <Textarea
         id="notes"
         rows={4}
-        placeholder="Internal notes about this customer (not visible to them)…"
+        aria-label="Internal notes"
         aria-invalid={!!errors.notes}
         {...register("notes")}
       />

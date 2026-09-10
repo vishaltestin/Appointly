@@ -93,7 +93,6 @@ export function CreateEventTypeDialog({
             <Label htmlFor="event-title">Title</Label>
             <Input
               id="event-title"
-              placeholder="e.g. 30 Minute Consultation"
               aria-invalid={!!errors.title}
               {...register("title")}
             />

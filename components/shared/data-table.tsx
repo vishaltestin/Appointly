@@ -158,8 +158,7 @@ export function DataTable<TData>({
           <Input
             value={globalFilter}
             onChange={(event) => setGlobalFilter(event.target.value)}
-            placeholder={searchPlaceholder}
-            aria-label="Filter table"
+            aria-label={searchPlaceholder}
             className="h-10 pl-9"
           />
         </div>

@@ -123,7 +123,6 @@ export function CreateScheduleDialog({
             <Label htmlFor="schedule-name">Name</Label>
             <Input
               id="schedule-name"
-              placeholder="e.g. Evening hours"
               aria-invalid={!!errors.name}
               {...register("name")}
             />

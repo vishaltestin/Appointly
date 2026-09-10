@@ -115,7 +115,6 @@ export function EventTypeAvailabilityForm({
             type="number"
             min={0}
             max={120}
-            placeholder="Inherit from schedule"
             defaultValue={defaultValues.bufferBeforeMinutes ?? undefined}
             onChange={(e) =>
               setValue(
@@ -135,7 +134,6 @@ export function EventTypeAvailabilityForm({
             type="number"
             min={0}
             max={120}
-            placeholder="Inherit from schedule"
             defaultValue={defaultValues.bufferAfterMinutes ?? undefined}
             onChange={(e) =>
               setValue(
@@ -163,7 +161,6 @@ export function EventTypeAvailabilityForm({
             id="maxPerDay"
             type="number"
             min={1}
-            placeholder="Unlimited"
             defaultValue={defaultValues.maximumBookingsPerDay ?? undefined}
             onChange={(e) =>
               setValue(

@@ -95,7 +95,6 @@ export function InviteMemberDialog({
             <Input
               id="email"
               type="email"
-              placeholder="teammate@company.com"
               {...register("email")}
             />
             {errors.email && (

@@ -41,7 +41,7 @@ export function CreateOrgForm() {
       )}
       <div className="space-y-2">
         <Label htmlFor="name">Workspace name</Label>
-        <Input id="name" placeholder="Acme Consulting" {...register("name")} />
+        <Input id="name" {...register("name")} />
         {errors.name && (
           <p className="text-sm text-destructive">{errors.name.message}</p>
         )}

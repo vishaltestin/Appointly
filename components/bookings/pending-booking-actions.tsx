@@ -114,8 +114,8 @@ export function PendingBookingActions({
             )}
             <div>
               <Textarea
-                placeholder="Reason (optional)"
                 rows={3}
+                aria-label="Reason (optional)"
                 aria-invalid={!!errors.reason}
                 {...register("reason")}
               />

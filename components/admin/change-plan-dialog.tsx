@@ -147,7 +147,6 @@ export function ChangePlanDialog({
             <Label htmlFor="plan-notes">Notes (optional)</Label>
             <Textarea
               id="plan-notes"
-              placeholder="e.g. Invoice #1042 paid by bank transfer"
               maxLength={500}
               aria-invalid={!!errors.notes}
               {...register("notes")}

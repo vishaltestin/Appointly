@@ -203,7 +203,6 @@ export function AddOverrideDialog({
             <Label htmlFor="override-reason">Label (optional)</Label>
             <Input
               id="override-reason"
-              placeholder="e.g. Christmas, Team offsite"
               aria-invalid={!!errors.reason}
               {...register("reason")}
             />

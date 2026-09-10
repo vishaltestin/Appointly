@@ -139,7 +139,7 @@ export function RegisterForm({
 
         <div className="space-y-2">
           <Label htmlFor="name">Full name</Label>
-          <Input id="name" placeholder="Jane Doe" {...register("name")} />
+          <Input id="name" {...register("name")} />
           {errors.name && (
             <p className="text-sm text-destructive">{errors.name.message}</p>
           )}
@@ -151,7 +151,6 @@ export function RegisterForm({
             id="phone"
             type="tel"
             autoComplete="tel"
-            placeholder="+91 98765 43210"
             {...register("phone")}
           />
           {errors.phone && (
@@ -167,7 +166,6 @@ export function RegisterForm({
           <Input
             id="email"
             type="email"
-            placeholder="you@example.com"
             {...register("email")}
           />
           {errors.email && (
@@ -180,7 +178,6 @@ export function RegisterForm({
           <Input
             id="password"
             type="password"
-            placeholder="••••••••"
             {...register("password")}
           />
           {errors.password && (
@@ -195,7 +192,6 @@ export function RegisterForm({
           <Input
             id="confirmPassword"
             type="password"
-            placeholder="••••••••"
           {...register("confirmPassword")}
           />
           {errors.confirmPassword && (

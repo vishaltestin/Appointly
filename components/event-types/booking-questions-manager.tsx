@@ -117,7 +117,7 @@ export function BookingQuestionsManager({
             <GripVertical className="mt-2.5 h-4 w-4 shrink-0 text-muted-foreground" />
             <div className="flex-1 space-y-2">
               <Input
-                placeholder="Question label"
+                aria-label={`Question ${index + 1} label`}
                 aria-invalid={!!errors.questions?.[index]?.label}
                 {...register(`questions.${index}.label`)}
               />

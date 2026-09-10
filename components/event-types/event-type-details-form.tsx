@@ -37,13 +37,6 @@ const LOCATION_LABELS: Record<string, string> = {
   CUSTOM: "Custom",
 }
 
-const LOCATION_PLACEHOLDER: Record<string, string> = {
-  IN_PERSON: "123 Main St, Suite 100",
-  PHONE_CALL: "+1 (555) 000-0000",
-  ONLINE_MEETING: "https://meet.google.com/...",
-  CUSTOM: "Details for your attendee",
-}
-
 const DURATION_PRESETS = [15, 30, 45, 60, 90]
 
 export function EventTypeDetailsForm({
@@ -189,7 +182,6 @@ export function EventTypeDetailsForm({
           <Label htmlFor="locationValue">Location details</Label>
           <Input
             id="locationValue"
-            placeholder={LOCATION_PLACEHOLDER[locationType]}
             {...register("locationValue")}
           />
         </div>

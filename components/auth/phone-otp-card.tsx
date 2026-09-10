@@ -102,7 +102,6 @@ export function PhoneOtpCard({
           inputMode="numeric"
           autoComplete="one-time-code"
           maxLength={6}
-          placeholder="••••••"
           className="text-center text-lg tracking-[0.5em]"
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}

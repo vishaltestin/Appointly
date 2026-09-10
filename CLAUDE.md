@@ -1144,3 +1144,19 @@ second iteration): until then the entire signup lives as a
   user must supply `WACRM_BASE_URL` / `WACRM_API_KEY` /
   `WACRM_OTP_TEMPLATE_ID`. Local preview runs with `ALLOW_DEV_OTP=true`
   (untracked `.env`), which surfaces the code in the UI instead of sending.
+
+### Follow-up (7c): all form placeholders removed (user request)
+
+Every visible ghost-text `placeholder` attribute was removed app-wide — 24
+occurrences in 17 files: auth forms (login/register/OTP card), settings,
+dialogs (create event type/schedule/org, invite member, add override,
+change plan), event-type editors, customer notes/search, booking reject
+reason, and the shared DataTable search input. Accessibility preserved via
+visible `Label`s everywhere plus `aria-label` on the few label-less fields
+(table search keeps its `searchPlaceholder` prop as the aria-label; notes
+editor, question rows, reason textarea gained one). Removed the now-dead
+`LOCATION_PLACEHOLDER` map. Verified with a Playwright sweep asserting
+**zero `input[placeholder]/textarea[placeholder]` attributes** across 18
+screens (desktop light, mobile dark, owner + super-admin personas,
+incl. all dialogs) with zero console errors. Gates: tsc 0 · eslint 0/13 ·
+knip baseline · build green.

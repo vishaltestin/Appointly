@@ -117,7 +117,7 @@ export function OrgSettingsForm({
           }}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select timezone" />
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {COMMON_TIMEZONES.map((tz) => (
