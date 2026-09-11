@@ -17,7 +17,7 @@ export function Brand({
     <span className={cn("flex items-center gap-2", className)}>
       <span
         className={cn(
-          "flex size-10 shrink-0 items-center justify-center overflow-hidden",
+          "flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-sm",
           iconClassName
         )}
       >
